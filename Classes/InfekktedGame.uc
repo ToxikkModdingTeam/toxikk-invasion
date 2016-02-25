@@ -110,6 +110,7 @@ auto State PendingMatch
 {
 	function InitActivePlayer(Controller C)
 	{
+		// This is probably not required anymore
 		if ( C.PlayerReplicationInfo != None )
 		{
 			C.PlayerReplicationInfo.bReadyToPlay = false;
@@ -134,6 +135,8 @@ State PreWaveCountdown
 	function BeginState(Name PrevStateName)
 	{
 		local int i;
+
+		//TODO: Force respawn all players! I forgot :p
 
 		// Setup new wave
 		CurrentWave = LoadedWaves[GRI.CurrentWave];
@@ -452,11 +455,12 @@ State BossInProgress extends MatchInProgress
 		PenaltyCount = 0;
 
 		GRI.SetRemainingTime(CurrentWave.BossTimeLimit);
+		// We don't want to count down the remaining time until boss is actually spawned.
 		GRI.bStopCountDown = true;
 	}
 
 	// We have to inhibit Timer until the boss is spawned otherwise CheckLastMonsters will end the wave.
-	// Also we don't want to count down the remaining time until boss is actually spawned.
+	// We put boss spawn in Timer because spawning can fail sometimes (bad collision checks etc).
 	function Timer()
 	{
 		if ( GRI.bStopCountDown )
@@ -473,7 +477,7 @@ State BossInProgress extends MatchInProgress
 		CurrentPenalty = CurrentWave.BossOvertimePenalty;
 	}
 
-	// This is pretty much duplicate of SpawnMonster, but we leave room for boss-specific adjustements
+	// Similar to SpawnMonster
 	function bool SpawnBoss()
 	{
 		local Controller C;
@@ -516,8 +520,6 @@ function GameOver(bool bWinner)
 	EndGame(PlayerReplicationInfo(GRI.Winner), "triggered");
 }
 
-// WIN <=> Winner != None
-// LOSE <=> Winner == None
 function bool CheckEndGame(PlayerReplicationInfo Winner, string Reason)
 {
 	local ToxikkMonster M;
@@ -807,9 +809,8 @@ function float RateMonsterStart(NavigationPoint P, Controller C)
 		Score = 80;
 
 	if ( P.bDestinationOnly )
-		Score /= 2;
+		Score -= 20;
 
-	// avoid players
 	foreach WorldInfo.AllPawns(class'Pawn', Other)
 	{
 		// avoid overlap
@@ -817,6 +818,7 @@ function float RateMonsterStart(NavigationPoint P, Controller C)
 		&& VSize2D(Other.Location - P.Location) < P.CylinderComponent.CollisionRadius + Other.CylinderComponent.CollisionRadius )
 			return -1;
 
+		// avoid players
 		OtherPlayer = CRZPawn(Other);
 		if ( OtherPlayer != None )
 		{

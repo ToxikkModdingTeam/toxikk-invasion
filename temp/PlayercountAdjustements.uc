@@ -54,11 +54,11 @@ function RecalcPlayercountAdjuster()
 	{
 		// find the right adjuster for each progressive playercount
 		cur = -1;
-		for ( j=0; i<PerPlayerDifficultyAdjusters.length; j++ )
+		for ( j=0; j<PerPlayerDifficultyAdjusters.length; j++ )
 		{
-			if ( PerPlayerDifficultyAdjusters[i].NumPlayers > i )
+			if ( PerPlayerDifficultyAdjusters[j].NumPlayers > i )
 				break;
-			cur = i;
+			cur = j;
 		}
 		if ( adjuster != -1 )
 		{
