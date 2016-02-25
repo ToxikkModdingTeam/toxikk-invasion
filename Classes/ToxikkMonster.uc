@@ -41,6 +41,7 @@ var()			float							PainSoundChance;
 // LungeDistance: How close the player has to be to lunge
 // SightChance: Chance to play sight anim
 // LungeChance: Chance to lunge at the player
+// CrawlChance: Chance to start crawling after we're standing and do a ranged attack
 //
 // TipBone, TipBoneLeft, TipBoneRight: Bones / sockets that projectiles / tracers come out of
 // RangedDelay: Minimum time between ranged attacks before the next can occur
@@ -49,11 +50,13 @@ var()			float							PainSoundChance;
 
 // Nodes in the animtree
 var() 			AnimNodePlayCustomAnim 			CustomAnimator, WalkSwitch;
+var()			AnimNodeBlend					CrawlBlender;
 var()			Name							RunningAnim;
 
-var()			bool							bHasMelee, bHasRanged, bWalkingAttack, bWalkingRanged, bHasLunge, bIsLunging;
+var()			bool							bHasMelee, bHasRanged, bWalkingAttack, bWalkingRanged, bHasLunge, bIsLunging, bIsCrawling, bLungeIfCrouched;
 var()			array<Name>						MeleeAttackAnims;
 var()			array<Name>						RangedAttackAnims;
+var()			array<Name>						CrouchedRangedAnims;
 var()			array<Name>						SightAnims;
 
 var()			array<Name>						PainAnims;
@@ -67,6 +70,7 @@ var()			float							RangedDelay, LungeSpeed;
 
 var()			name							LungeStartAnim, LungeMidAnim, LungeEndAnim;
 var()			float							PreRotateModifier;
+var()			float							CrawlChance;
 
 //--BOSS CAMERA----------------------------------------------------------------
 // bIsBossMonster: Uses the boss camera when spawning, also starts next wave
@@ -108,10 +112,22 @@ var()			float							ShakeDistance;
 
 //=============================================================================
 
+replication
+{
+	if (bNetDirty || bNetInitial)
+		bIsCrawling;
+}
+
 // Don't take damage when we're dead, keeps the ragdoll from freezing mid-air
 state Dying
 {
 	event TakeDamage(int Damage, Controller EventInstigator, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser);
+}
+
+// Decide whether or not we're crawling (imps / vulgars)
+reliable server function SetCrawling(bool bCrawl)
+{
+	bIsCrawling = bCrawl;
 }
 
 // Do a radial shake, called on the player viewport
@@ -172,10 +188,16 @@ simulated function Tick(float Delta)
 			}
 		}
 	}
+		
+	// If we're crawling, set the crawl blender accordingly
+	if (CrawlBlender != None)
+	{
+		if (bIsCrawling)
+			CrawlBlender.SetBlendTarget(1.0,0.0);
+		else
+			CrawlBlender.SetBlendTarget(0.0,0.0);
+	}
 
-	if ( Controller == None )
-		return;
-	
 	if (Controller == None)
 		return;
 	
@@ -349,7 +371,7 @@ simulated function PostBeginPlay()
 	FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
 	LEC.SetEnabled(true); // now the dynamic light component
 
-	/* This must be off - Pawns spawned during gameplay don't initially have a controller
+	/* this must be off - Pawns spawned during gameplay have controller assigned manually
 	if (Role == ROLE_Authority)
 		SpawnDefaultController();
 	*/
@@ -375,6 +397,7 @@ simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
         WalkSwitch = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('WalkSwitch'));
 		TorsoAimer = AnimNodeAimOffset(SkelComp.FindAnimNode('AimNode'));
 		CustomSeq = AnimNodeSequence(SkelComp.FindAnimNode('CustomSeq'));
+		CrawlBlender = AnimNodeBlend(SkelComp.FindAnimNode('CrawlBlend'));
 		
 		// Set default walk anim
 		WalkSwitch.PlayCustomAnim(RunningAnim,1.0,,,true);
@@ -605,11 +628,11 @@ reliable server function SeenSomething()
 event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
 {
 	local vector BloodMomentum;
-
-	Super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
-
+	
+	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+	
 	// lock to attacker
-	if (InstigatedBy != None && InstigatedBy.Pawn != None)
+	if ( InstigatedBy != None && InstigatedBy.Pawn != None )
 	{
 		ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn);
 		SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
@@ -619,8 +642,8 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 		return;
 
 	// hitsounds/hitmarkers for player
-	if ( CRZPlayerController(InstigatedBy) != None )	
-		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);//send to client
+	if ( CRZPlayerController(InstigatedBy) != None )		
+		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);
 
 	// say "ouch"
 	if ( FRand() >= PainSoundChance )
@@ -711,7 +734,7 @@ DefaultProperties
 	PunchDamage=10
 
 	ProjDamageMult=1.0
-	
+
 	AttackDistance=92
 	
 	RunningAnim=Walk
@@ -728,4 +751,7 @@ DefaultProperties
 	
 	TorsoName=Default
 	bUseAimOffset=true
+	
+	// 0% chance
+	CrawlChance=0.0
 }

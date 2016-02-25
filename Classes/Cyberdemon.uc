@@ -157,7 +157,7 @@ DefaultProperties
 	TipBoneRight=sock_rgun
 	TipBone=sock_rgun
 	
-	MissileClass=Class'Cruzade.CRZProj_RocketLauncher'
+	MissileClass=Class'CyberdemonMissile'
 	
 	bHasMelee=false
 	bHasRanged=true

@@ -1,0 +1,10 @@
+[InfekktedGame]
+GameName="Infekkted"
+
+;none of the following work
+Description="Monsters invasion co-op gamemode"
+EndOfMatchRulesTemplateStr_Scoring="Monsters invasion co-op gamemode"
+EndOfMatchRulesTemplateStr_Time="Monsters invasion co-op gamemode"
+
+[GFxCRZFrontEnd_GameModes]
+ListOptions=(OptionName="Infekkted.InfekktedGame",OptionLabel="Infekkted",OptionDesc="Monsters invasion co-op gamemode")
