@@ -176,6 +176,9 @@ simulated function Tick(float Delta)
 	if ( Controller == None )
 		return;
 	
+	if (Controller == None)
+		return;
+	
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
 	// ToDo: Add tween to this that way it doesn't radically snap
 	if (TorsoAimer != None && bUseAimOffset)
@@ -603,7 +606,7 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 {
 	local vector BloodMomentum;
 
-	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+	Super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
 
 	// lock to attacker
 	if (InstigatedBy != None && InstigatedBy.Pawn != None)
