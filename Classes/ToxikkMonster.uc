@@ -172,6 +172,9 @@ simulated function Tick(float Delta)
 		}
 	}
 	
+	if (Controller == None)
+		return;
+	
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
 	// ToDo: Add tween to this that way it doesn't radically snap
 	if (TorsoAimer != None && bUseAimOffset)
@@ -588,14 +591,12 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 {
 	local vector BloodMomentum;
 	
-	// HITMARKER
-	// effectiveDamage = OldHealth - MAX(0, Health);
-	// if( CRZPlayerController(InstigatedBy) != none && effectiveDamage > 0 && InstigatedBy != Controller ) //make sure the damage is caused by an actor (is none when fall damage)
-	// {
-		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);//send to client
-	// }
-	
 	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+	
+	if (InstigatedBy == None)
+		return;
+		
+	CRZPlayerController(InstigatedBy).ConfirmHit(Damage);//send to client
 	
 	if (InstigatedBy.Pawn != None)
 	{
@@ -606,15 +607,9 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 	if (FRand() >= PainSoundChance)
 		PlaySound(PainSound, TRUE);
 		
-	// BLOOD!
-	// if ( class<UTDamageType>(DamageType).default.bCausesBlood )
-	// {
-		BloodMomentum = Momentum;
-		if ( BloodMomentum.Z > 0 )
-			BloodMomentum.Z *= 0.5;
-		// HitEffect = Spawn(class'UTGame.UTEmit_BloodSpray',self,, HitLocation, rotator(BloodMomentum));
-		// HitEffect.AttachTo(Self,HitInfo.BoneName);
-	// }
+	BloodMomentum = Momentum;
+	if ( BloodMomentum.Z > 0 )
+		BloodMomentum.Z *= 0.5;
 }
 
 DefaultProperties
