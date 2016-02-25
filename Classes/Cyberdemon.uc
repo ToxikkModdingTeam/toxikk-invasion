@@ -90,10 +90,13 @@ DefaultProperties
 		
 	TorsoName=Cyberdemon
 	
+/* now set dynamically in SetMonsterAsBoss()
 	bIsBossMonster=true
+	bForceInitialTarget=true
+*/
+
 	FocusBone = part_mouthfire
 	BossBone = Hips
-	bForceInitialTarget=true
 	BossVector = (Y=100.0,Z=300.0)
 	
 	// PARTICLE BONES

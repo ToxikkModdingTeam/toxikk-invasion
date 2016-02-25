@@ -60,6 +60,7 @@ var()			array<Name>						PainAnims;
 var()			int								PunchDamage, LungeDamage;
 var()			float							AttackDistance, SightChance, RangedAttackDistance, LungeChance, LungeDistance;
 var()			Class<Projectile>				MissileClass;
+var()           float                           ProjDamageMult;
 
 var()			name							TipBone, TipBoneLeft, TipBoneRight;
 var()			float							RangedDelay, LungeSpeed;
@@ -171,6 +172,9 @@ simulated function Tick(float Delta)
 			}
 		}
 	}
+
+	if ( Controller == None )
+		return;
 	
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
 	// ToDo: Add tween to this that way it doesn't radically snap
@@ -342,8 +346,18 @@ simulated function PostBeginPlay()
 	FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
 	LEC.SetEnabled(true); // now the dynamic light component
 
+	/* This must be off - Pawns spawned during gameplay don't initially have a controller
 	if (Role == ROLE_Authority)
 		SpawnDefaultController();
+	*/
+}
+
+// Called by gamemode right after spawn
+function SetMonsterIsBoss()
+{
+	bIsBossMonster = true;
+	bForceInitialTarget = true;
+	bAlwaysRelevant = true;
 }
 
 // Anim tree is initialized
@@ -572,6 +586,7 @@ reliable server function DoShot(name BoneName)
 	
 	// SPAWN THE ACTUAL PROJECTILE
 	Proj = Spawn(MissileClass,Controller,,FinalLoc,FinalRotation);
+	Proj.Damage *= ProjDamageMult;
 	// Proj.Speed = 50;
 	if (CRZProjectile(Proj) != None)
 		CRZProjectile(Proj).CRZInit(vector(FinalRotation),vector(FinalRotation),-1);
@@ -587,34 +602,31 @@ reliable server function SeenSomething()
 event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
 {
 	local vector BloodMomentum;
-	
-	// HITMARKER
-	// effectiveDamage = OldHealth - MAX(0, Health);
-	// if( CRZPlayerController(InstigatedBy) != none && effectiveDamage > 0 && InstigatedBy != Controller ) //make sure the damage is caused by an actor (is none when fall damage)
-	// {
-		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);//send to client
-	// }
-	
+
 	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
-	
-	if (InstigatedBy.Pawn != None)
+
+	// lock to attacker
+	if (InstigatedBy != None && InstigatedBy.Pawn != None)
 	{
 		ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn);
 		SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
 	}
-	
-	if (FRand() >= PainSoundChance)
+
+	if ( Damage <= 0 )
+		return;
+
+	// hitsounds/hitmarkers for player
+	if ( CRZPlayerController(InstigatedBy) != None )	
+		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);//send to client
+
+	// say "ouch"
+	if ( FRand() >= PainSoundChance )
 		PlaySound(PainSound, TRUE);
-		
-	// BLOOD!
-	// if ( class<UTDamageType>(DamageType).default.bCausesBlood )
-	// {
-		BloodMomentum = Momentum;
-		if ( BloodMomentum.Z > 0 )
-			BloodMomentum.Z *= 0.5;
-		// HitEffect = Spawn(class'UTGame.UTEmit_BloodSpray',self,, HitLocation, rotator(BloodMomentum));
-		// HitEffect.AttachTo(Self,HitInfo.BoneName);
-	// }
+
+	// spill some blood
+	BloodMomentum = Momentum;
+	if ( BloodMomentum.Z > 0 )
+		BloodMomentum.Z *= 0.5;
 }
 
 DefaultProperties
@@ -661,7 +673,7 @@ DefaultProperties
     Components.Add(MainMesh)
 	Components.Add(MyLightEnvironment)
 	
-	ControllerClass=class'ToxikkInvasion.ToxikkMonsterController'
+	ControllerClass=class'Infekkted.ToxikkMonsterController'
 
 	// Monsters can't jump
     bJumpCapable=false
@@ -694,6 +706,8 @@ DefaultProperties
 	MeleeAttackAnims(3)=MeleeAttack04
 	
 	PunchDamage=10
+
+	ProjDamageMult=1.0
 	
 	AttackDistance=92
 	
