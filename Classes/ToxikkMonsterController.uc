@@ -4,7 +4,7 @@
 Class ToxikkMonsterController extends AIController;
 
 // Pawn we're following
-var Actor Target;
+var Actor Target, RoamTarget;
 var() Vector TempDest;
 var vector nextlocation;
 
@@ -107,7 +107,7 @@ state PreAttack
 			Pawn.Acceleration = vect(0,0,1);
 			
 			if (Target == None)
-				GotoState('Idling');
+				GotoState('Wander');
 				
 			SetFocalPoint(Target.Location);
 			Sleep(0.01);
@@ -128,7 +128,7 @@ state PreAttack
 				if (Target != None)
 					GotoState('ChasePlayer');
 				else
-					GotoState('Idling');
+					GotoState('Wander');
 		}
 }
 
@@ -178,7 +178,7 @@ state Lunging
 		if (Target != None)
 			GotoState('ChasePlayer');
 		else
-			GotoState('Idling');
+			GotoState('Wander');
 }
 
 // PLAYING SIGHT ANIM
@@ -212,11 +212,11 @@ state Sight
 		if (Target != None)
 			GotoState('ChasePlayer');
 		else
-			GotoState('Idling');
+			GotoState('Wander');
 }
 
 // IN THIS STATE, WE'RE DOING NOTHING
-auto state Idling
+state Idling
 {
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
@@ -241,6 +241,49 @@ auto state Idling
 		if (Target != None)
 			LockOnTo(Pawn(Target));
 	}
+}
+
+// ROAM AND LOOK FOR A PLAYER
+auto state Wander
+{
+	// Change targets if we actually see the player in front of us
+	event SeePlayer(Pawn Seen)
+	{
+		super.SeePlayer(Seen);
+		LockOnTo(Seen);
+	}
+	
+	// If the player shoots then see him
+	event HearNoise(float Loudness, Actor NoiseMaker, optional name NoiseType)
+	{
+		if (CRZPawn(Noisemaker) != None)
+			LockOnTo(Pawn(NoiseMaker));
+		if (Weapon(NoiseMaker) != None)
+			LockOnTo(Weapon(NoiseMaker).Instigator);
+	}
+	
+	Begin:
+		`Log("Begin wander");
+		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
+			RoamTarget = FindRandomDest();
+		
+		Target = FindPathToward(RoamTarget);
+		
+		if (Target != None)
+		{
+			// `Log("Moving toward roam destination.");
+			MoveToward(Target);
+		}
+		else
+		{
+			RoamTarget = FindRandomDest();
+			// `Log("Finding new target.");
+		}
+		
+		Sleep(0.5);
+		
+	if (Pawn(Target) == None)
+		GotoState('Wander');
 }
 
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
@@ -287,7 +330,7 @@ state Attacking
 		if (Target != None)
 			GotoState('ChasePlayer');
 		else
-			GotoState('Idling');
+			GotoState('Wander');
 }
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
@@ -367,7 +410,7 @@ state RangedAttack
 		if (Target != None)
 			GotoState('ChasePlayer');
 		else
-			GotoState('Idling');
+			GotoState('Wander');
 }
 
 state ChasePlayer
@@ -458,7 +501,7 @@ state ChasePlayer
 		
 		// NO TARGET? Idle
 		if (Target == None)
-			GotoState('Idling');
+			GotoState('Wander');
     }
 }
 
