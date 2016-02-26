@@ -373,6 +373,12 @@ simulated function PostBeginPlay()
 
 	// this must be off - Pawns spawned during gameplay have controller assigned manually
 	if (Role == ROLE_Authority)
+		SetTimer(1.0,false,'CheckController');
+}
+
+simulated function CheckController()
+{
+	if (Controller == None)
 		SpawnDefaultController();
 }
 
