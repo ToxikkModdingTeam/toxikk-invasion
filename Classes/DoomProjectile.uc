@@ -7,8 +7,6 @@ var			rotator		ProjRotation;
 // No team colors
 simulated event CreateProjectileLight()
 {
-	local int TeamNum;
-
 	if ( WorldInfo.bDropDetail )
 		return;
 
