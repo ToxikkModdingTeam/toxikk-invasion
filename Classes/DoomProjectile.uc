@@ -1,6 +1,8 @@
 class DoomProjectile extends CRZProjectile;
 
-var float ProjScale;
+// Variables for the emitter
+var 		float 		ProjScale;
+var			rotator		ProjRotation;
 
 // No team colors
 simulated event CreateProjectileLight()
@@ -51,6 +53,7 @@ simulated function SpawnFlightEffects()
 				ProjEffects.bUpdateComponentInTick = true;
 				ProjEffects.CustomTimeDilation = 1/CustomTimeDilation;//dont slow it down
 				ProjEffects.SetScale(ProjScale);
+				ProjEffects.SetRotation(ProjRotation);
 				AttachComponent(ProjEffects);
 			}
 		}

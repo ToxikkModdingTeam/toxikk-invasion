@@ -41,6 +41,7 @@ var()			float							PainSoundChance;
 // LungeDistance: How close the player has to be to lunge
 // SightChance: Chance to play sight anim
 // LungeChance: Chance to lunge at the player
+// CrawlChance: Chance to start crawling after we're standing and do a ranged attack
 //
 // TipBone, TipBoneLeft, TipBoneRight: Bones / sockets that projectiles / tracers come out of
 // RangedDelay: Minimum time between ranged attacks before the next can occur
@@ -49,11 +50,13 @@ var()			float							PainSoundChance;
 
 // Nodes in the animtree
 var() 			AnimNodePlayCustomAnim 			CustomAnimator, WalkSwitch;
+var()			AnimNodeBlend					CrawlBlender;
 var()			Name							RunningAnim;
 
-var()			bool							bHasMelee, bHasRanged, bWalkingAttack, bWalkingRanged, bHasLunge, bIsLunging;
+var()			bool							bHasMelee, bHasRanged, bWalkingAttack, bWalkingRanged, bHasLunge, bIsLunging, bIsCrawling, bLungeIfCrouched;
 var()			array<Name>						MeleeAttackAnims;
 var()			array<Name>						RangedAttackAnims;
+var()			array<Name>						CrouchedRangedAnims;
 var()			array<Name>						SightAnims;
 
 var()			array<Name>						PainAnims;
@@ -66,6 +69,7 @@ var()			float							RangedDelay, LungeSpeed;
 
 var()			name							LungeStartAnim, LungeMidAnim, LungeEndAnim;
 var()			float							PreRotateModifier;
+var()			float							CrawlChance;
 
 //--BOSS CAMERA----------------------------------------------------------------
 // bIsBossMonster: Uses the boss camera when spawning, also starts next wave
@@ -107,10 +111,22 @@ var()			float							ShakeDistance;
 
 //=============================================================================
 
+replication
+{
+	if (bNetDirty || bNetInitial)
+		bIsCrawling;
+}
+
 // Don't take damage when we're dead, keeps the ragdoll from freezing mid-air
 state Dying
 {
 	event TakeDamage(int Damage, Controller EventInstigator, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser);
+}
+
+// Decide whether or not we're crawling (imps / vulgars)
+reliable server function SetCrawling(bool bCrawl)
+{
+	bIsCrawling = bCrawl;
 }
 
 // Do a radial shake, called on the player viewport
@@ -174,6 +190,15 @@ simulated function Tick(float Delta)
 	
 	if (Controller == None)
 		return;
+		
+	// If we're crawling, set the crawl blender accordingly
+	if (CrawlBlender != None)
+	{
+		if (bIsCrawling)
+			CrawlBlender.SetBlendTarget(1.0,0.0);
+		else
+			CrawlBlender.SetBlendTarget(0.0,0.0);
+	}
 	
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
 	// ToDo: Add tween to this that way it doesn't radically snap
@@ -361,6 +386,7 @@ simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
         WalkSwitch = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('WalkSwitch'));
 		TorsoAimer = AnimNodeAimOffset(SkelComp.FindAnimNode('AimNode'));
 		CustomSeq = AnimNodeSequence(SkelComp.FindAnimNode('CustomSeq'));
+		CrawlBlender = AnimNodeBlend(SkelComp.FindAnimNode('CrawlBlend'));
 		
 		// Set default walk anim
 		WalkSwitch.PlayCustomAnim(RunningAnim,1.0,,,true);
@@ -706,4 +732,7 @@ DefaultProperties
 	
 	TorsoName=Default
 	bUseAimOffset=true
+	
+	// 0% chance
+	CrawlChance=0.0
 }

@@ -170,6 +170,9 @@ state Lunging
 		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeEndAnim);
 		Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).LungeEndAnim));
 		
+		// Don't crawl anymore
+		ToxikkMonster(Pawn).SetCrawling(false);
+		
 		RangedTimer=0.0;
 		
 		if (Target != None)
@@ -292,6 +295,7 @@ state RangedAttack
 {
 	local int i;
 	local float StateTimer, TimerGoal;
+	local bool bCanLunge;
 	
 	simulated function Tick(float Delta)
 	{
@@ -314,16 +318,37 @@ state RangedAttack
 	
 	Begin:
 		if (FRand() >= ToxikkMonster(Pawn).LungeChance && ToxikkMonster(Pawn).bHasLunge)
-			GotoState('Lunging');
+		{
+			// If the monster has lunge while crouched then check if they're crouched
+			if (ToxikkMonster(Pawn).bLungeIfCrouched && ToxikkMonster(Pawn).bIsCrawling)
+				bCanLunge=true;
+			else if (!ToxikkMonster(Pawn).bLungeIfCrouched)
+				bCanLunge=true;
+			
+			if (bCanLunge)
+				GotoState('Lunging');
+		}
 			
 		// Face the player
 		StateTimer = 0.0;
 		DesiredRot = Rotator(Target.Location - Pawn.Location);
 		Pawn.Acceleration = vect(0,0,1);
 		
-		i = Rand(ToxikkMonster(Pawn).RangedAttackAnims.Length);
-		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).RangedAttackAnims[i]);
-		TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).RangedAttackAnims[i]);
+		if (ToxikkMonster(Pawn).CrouchedRangedAnims.Length > 0 && ToxikkMonster(Pawn).bIsCrawling)
+			i = Rand(ToxikkMonster(Pawn).CrouchedRangedAnims.Length);
+		else
+			i = Rand(ToxikkMonster(Pawn).RangedAttackAnims.Length);
+			
+		if (ToxikkMonster(Pawn).CrouchedRangedAnims.Length > 0 && ToxikkMonster(Pawn).bIsCrawling)
+		{
+			ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).CrouchedRangedAnims[i]);
+			TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).CrouchedRangedAnims[i]);
+		}
+		else
+		{
+			ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).RangedAttackAnims[i]);
+			TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).RangedAttackAnims[i]);
+		}
 		
 		while (StateTimer < TimerGoal)
 		{
@@ -334,6 +359,10 @@ state RangedAttack
 		}
 		
 		RangedTimer=0.0;
+		
+		// Decide if we should go into crawl mode or not
+		if (FRand() >= 1.0-ToxikkMonster(Pawn).CrawlChance)
+			ToxikkMonster(Pawn).SetCrawling(true);
 		
 		if (Target != None)
 			GotoState('ChasePlayer');
