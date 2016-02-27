@@ -263,7 +263,7 @@ auto state Wander
 	}
 	
 	Begin:
-		`Log("Begin wander");
+		// `Log("Begin wander");
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		

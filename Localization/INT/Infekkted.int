@@ -1,10 +1,23 @@
 [InfekktedGame]
 GameName="Infekkted"
 
-;none of the following work
+; none of the following work for gamemode description...
 Description="Monsters invasion co-op gamemode"
 EndOfMatchRulesTemplateStr_Scoring="Monsters invasion co-op gamemode"
 EndOfMatchRulesTemplateStr_Time="Monsters invasion co-op gamemode"
 
+; doesn't work either
 [GFxCRZFrontEnd_GameModes]
 ListOptions=(OptionName="Infekkted.InfekktedGame",OptionLabel="Infekkted",OptionDesc="Monsters invasion co-op gamemode")
+
+[IFDmgType_HellknightBall]
+DeathString="`o was incinerated by a hell knight"
+FemaleSuicide="`o was incinerated by a hell knight"
+MaleSuicide="`o was incinerated by a hell knight"
+VictimString="(HELL KNIGHT)"
+
+[IFDmgType_Overtime]
+DeathString="`o ran out of time"
+FemaleSuicide="`o ran out of time"
+MaleSuicide="`o ran out of time"
+VictimString="(TIME)"

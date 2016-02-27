@@ -103,9 +103,9 @@ function InitConfig()
 	MapAdjusters.Length = 1;
 	MapAdjusters[0].Map = "BL-Foundation";
 
-	AutoMapAdjuster.TotalMonsters = 0.75;
-	AutoMapAdjuster.SpawnRate = 0.75;
-	AutoMapAdjuster.MaxDensity = 0.75;
+	AutoMapAdjuster.TotalMonsters = 0.20;
+	AutoMapAdjuster.SpawnRate = 0.50;
+	AutoMapAdjuster.MaxDensity = 0.90;
 
 	TeamDamageDirect = 0.0;
 	TeamDamageRetaliate = 0.25;

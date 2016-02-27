@@ -15,5 +15,5 @@ defaultproperties
 	
 	ProjScale=1.5
 
-	MyDamageType=Class'DmgType_HellknightBall'
+	MyDamageType=Class'IFDmgType_HellknightBall'
 }

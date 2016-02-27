@@ -23,18 +23,27 @@ var InfekktedConfig Conf;
 //internal
 var InfekktedGRI GRI;
 var array<WaveConfig> LoadedWaves;
+var bool bPlayersWon;
 
-// Gameplay stuff
-var bool bCanSpawnMidWave;
+// adjusters
+CONST MAPSIZE_REFERENCE = 2000;
+var sMapAdjuster MapAdjuster;
+var sPlayerCountAdjuster PlayercountAdjuster;
+var bool bNeedRecalcPCAdjuster;
+
+// wave
 var WaveConfig CurrentWave;
-var int PenaltyCount;
-var int RemainingMonsters;
+var bool bCanSpawnMidWave;
+var int AdjustedTotalMonsters;
 var int AdjustedMaxDensity;
 var float AdjustedSpawnRate;
-var float MonstersToSpawn;
 var int MonstersListTotalWeight;
+var float MonstersToSpawn;
+var int SpawnedMonsters;
+
+// overtime penalty
 var ePenaltyMode CurrentPenalty;
-var bool bPlayersWon;
+var int PenaltyCount;
 
 //================================================
 // Game init
@@ -50,12 +59,21 @@ function PostBeginPlay()
 	TimeLimit = 0;
 
 	// team damage
-	//FriendlyFireScale = 1.0;  // only if TeamGame
+	//FriendlyFireScale = 1.0;  // only if we extend TeamGame
 
 	Conf = new class'InfekktedConfig';
 	Conf.Init();
 
+	CalcMapAdjusters();
+
+	Conf.PerPlayerDifficultyAdjusters.Sort(CompareAdjusters);
+
 	LoadWaves();
+}
+
+static function int CompareAdjusters(sPlayerCountAdjuster A, sPlayerCountAdjuster B)
+{
+	return (B.NumPlayers - A.NumPlayers);
 }
 
 function LoadWaves()
@@ -92,6 +110,27 @@ function LoadWaves()
 		`Log("[Infekkted] ERROR: Game doesn't have any waves!");
 }
 
+function CalcMapAdjusters()
+{
+	local int i;
+	local float Size, SizeDiff;
+
+	i = Conf.MapAdjusters.Find('Map', WorldInfo.GetMapName(true));
+	if ( i != INDEX_None )
+		MapAdjuster = Conf.MapAdjusters[i];
+	else
+	{
+		`Log("[DEBUG] Using fallback AutoMapAdjuster");
+		Size = CalcAvgMapSize();
+		`Log("[DEBUG] Calculated avg mapsize: " $ Size);
+		SizeDiff = Size / MAPSIZE_REFERENCE;
+		`Log("[DEBUG] SizeDiff = " $ SizeDiff);
+		MapAdjuster.TotalMonsters = SizeDiff * Conf.AutoMapAdjuster.TotalMonsters;
+		MapAdjuster.SpawnRate = SizeDiff * Conf.AutoMapAdjuster.SpawnRate;
+		MapAdjuster.MaxDensity = SizeDiff * Conf.AutoMapAdjuster.MaxDensity;
+	}
+}
+
 function InitGameReplicationInfo()
 {
     Super.InitGameReplicationInfo();
@@ -103,21 +142,20 @@ function InitGameReplicationInfo()
 
 
 //================================================
-// Game states & logic
+// General
 //================================================
 
-auto State PendingMatch
+function UpdateGlobalAdjusters()
 {
-	function InitActivePlayer(Controller C)
-	{
-		// This is probably not required anymore
-		if ( C.PlayerReplicationInfo != None )
-		{
-			C.PlayerReplicationInfo.bReadyToPlay = false;
-			C.PlayerReplicationInfo.bWaitingPlayer = true;
-		}
-	}
+	AdjustedTotalMonsters = CurrentWave.TotalMonsters * MapAdjuster.TotalMonsters * PlayercountAdjuster.TotalMonsters;
+	AdjustedSpawnRate = CurrentWave.SpawnRate * MapAdjuster.SpawnRate * PlayercountAdjuster.SpawnRate;
+	AdjustedMaxDensity = CurrentWave.MaxDensity * MapAdjuster.MaxDensity * PlayercountAdjuster.MaxDensity;
 }
+
+
+//================================================
+// Game states & logic
+//================================================
 
 function StartCountdown()
 {
@@ -134,17 +172,31 @@ State PreWaveCountdown
 {
 	function BeginState(Name PrevStateName)
 	{
+		local Controller C;
 		local int i;
-
-		//TODO: Force respawn all players! I forgot :p
 
 		// Setup new wave
 		CurrentWave = LoadedWaves[GRI.CurrentWave];
 
-		// TODO: add adjusters!!!
-		RemainingMonsters = CurrentWave.TotalMonsters;
-		AdjustedSpawnRate = CurrentWave.SpawnRate;
-		AdjustedMaxDensity = CurrentWave.MaxDensity;
+		if ( bNeedRecalcPCAdjuster )
+			RecalcPlayercountAdjuster();
+		else
+			UpdateGlobalAdjusters();
+
+		// Respawn all dead players
+		foreach WorldInfo.AllControllers(class'Controller', C)
+		{
+			if ( InfekktedPRI(C.PlayerReplicationInfo) != none && !C.PlayerReplicationInfo.bOnlySpectator && C.Pawn == None )
+			{
+				C.PlayerReplicationInfo.bOutOfLives = false;
+				C.PlayerReplicationInfo.bReadyToPlay = true;
+
+				if ( PlayerController(C) != None )
+					C.GotoState('PlayerWaiting');
+
+				RestartPlayer(C);
+			}
+		}
 
 		MonstersListTotalWeight = 0;
 		for ( i=0; i<CurrentWave.LoadedMonsters.Length; i++ )
@@ -153,8 +205,9 @@ State PreWaveCountdown
 		// reset wave values
 		bCanSpawnMidWave = true;
 		PenaltyCount = 0;
-		MonstersToSpawn = 0.0;
 		CurrentPenalty = PNLTY_None;
+		MonstersToSpawn = 0.0;
+		SpawnedMonsters = 0;
 
 		// delay stuff a bit for smoothness
 		GRI.bStopCountDown = true;
@@ -175,6 +228,8 @@ State PreWaveCountdown
 
 	function InitActivePlayer(Controller C)
 	{
+		Global.InitActivePlayer(C);
+
 		if ( C.PlayerReplicationInfo != None )
 		{
 			C.PlayerReplicationInfo.bOutOfLives = false;
@@ -206,6 +261,8 @@ State MatchInProgress
 
 	function InitActivePlayer(Controller C)
 	{
+		Global.InitActivePlayer(C);
+
 		if ( C.PlayerReplicationInfo != None )
 		{
 			if ( bCanSpawnMidWave )
@@ -233,7 +290,7 @@ State MatchInProgress
 		local PlayerController PC;
 		local CRZPawn P;
 
-		if ( RemainingMonsters > 0 )
+		if ( SpawnedMonsters < AdjustedTotalMonsters )
 			SpawnMonsters();
 		else
 			ApproachingEndOfWave();
@@ -264,22 +321,22 @@ State MatchInProgress
 						foreach WorldInfo.AllPawns(class'CRZPawn', P)
 						{
 							if ( P.Health > 1 )
-								P.TakeDamage(Min(10, P.Health-1), None, P.Location, Vect(0,0,0), None);   //TODO: dmgType
+								P.TakeDamage(Min(10, P.Health-1), None, P.Location, Vect(0,0,0), class'IFDmgType_Overtime');
 						}
 						break;
 
 					case PNLTY_DegenKill:
 						foreach WorldInfo.AllPawns(class'CRZPawn', P)
 						{
-							P.TakeDamage(10, None, P.Location, Vect(0,0,0), None);    //TODO: dmgType
+							P.TakeDamage(10, None, P.Location, Vect(0,0,0), class'IFDmgType_Overtime');
 						}
 						break;
 
 					case PNLTY_Death:
 						foreach WorldInfo.AllPawns(class'CRZPawn', P)
 						{
-							P.Died(None, None, P.Location);     //TODO: dmgType
-							//TODO: I'd love a lightning strike FX for this - see about reusing Bullrush'skyrocket
+							//TODO: I'd love a lightning strike FX for this!!
+							P.Died(None, class'IFDmgType_Overtime', P.Location);
 							break;
 						}
 						break;
@@ -309,12 +366,12 @@ State MatchInProgress
 			return;
 
 		// spawn monsters
-		while ( MonstersToSpawn >= 1.0 && RemainingMonsters > 0 )
+		while ( MonstersToSpawn >= 1.0 && SpawnedMonsters < AdjustedTotalMonsters )
 		{
 			if ( SpawnMonster() )
 			{
 				MonstersToSpawn -= 1.0;
-				RemainingMonsters--;
+				SpawnedMonsters++;
 			}
 			else
 				break;
@@ -361,15 +418,17 @@ State MatchInProgress
 
 	function ApplyAdjustements(Pawn M, sMonsterDef MonsterDef)
 	{
-		//TODO: apply all the adjusters!
+		// without adjusters
 		M.SetDrawScale(MonsterDef.Scale);
-		M.Health = MonsterDef.Health; // * CurrentHealthMultiplier;
 		M.GroundSpeed *= MonsterDef.Speed;
+		// with adjusters
+		//TODO: see about the formula: param *= (MonsterDef.param + Adjuster.param - 1.0)
+		M.Health = MonsterDef.Health * PlayercountAdjuster.Health;
 		if ( M.IsA('ToxikkMonster') )
 		{
-			ToxikkMonster(M).PunchDamage *= MonsterDef.MeleeDamage; // * CurrentMeleeMultiplier;
-			ToxikkMonster(M).LungeDamage *= MonsterDef.RangeDamage; // * CurrentRangeMultiplier;
-			ToxikkMonster(M).ProjDamageMult *= MonsterDef.RangeDamage; // * CurrentRangeMultiplier;
+			ToxikkMonster(M).PunchDamage *= MonsterDef.MeleeDamage * PlayercountAdjuster.MeleeDamage;
+			ToxikkMonster(M).LungeDamage *= MonsterDef.RangeDamage * PlayercountAdjuster.RangeDamage;
+			ToxikkMonster(M).ProjDamageMult *= MonsterDef.RangeDamage * PlayercountAdjuster.RangeDamage;
 		}
 	}
 
@@ -388,7 +447,7 @@ State MatchInProgress
 			foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
 				Count++;
 
-			if ( Count <= AdjustedMaxDensity / 20.f )
+			if ( Count <= 0.2*AdjustedMaxDensity )
 				GotoState('BossInProgress');
 		}
 		else
@@ -451,8 +510,8 @@ State BossInProgress extends MatchInProgress
 	function BeginState(Name PrevStateName)
 	{
 		CurrentPenalty = PNLTY_None;
-		// bCanSpawnMidWave = false; // shall we ?
 		PenaltyCount = 0;
+		bCanSpawnMidWave = false;   // still not sure
 
 		GRI.SetRemainingTime(CurrentWave.BossTimeLimit);
 		// We don't want to count down the remaining time until boss is actually spawned.
@@ -475,6 +534,13 @@ State BossInProgress extends MatchInProgress
 	function TimeUp()
 	{
 		CurrentPenalty = CurrentWave.BossOvertimePenalty;
+	}
+
+	// If we don't set bCanSpawnMidwave=false for BossInProgress, if somebody joins after boss spawn,
+	// fall again into (SpawnedMonsters < AdjustedTotalMonsters) so we must inhibit SpawnMonsters
+	function SpawnMonsters()
+	{
+		ApproachingEndOfWave();
 	}
 
 	// Similar to SpawnMonster
@@ -510,8 +576,28 @@ State BossInProgress extends MatchInProgress
 		CheckLastMonsters();
 	}
 
-	//TODO: When boss dies, kill all remaining minions to end wave immediately
+	// When boss dies, kill all remaining minions to end wave immediately
+	function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, class<DamageType> damageType)
+	{
+		local ToxikkMonster M;
+
+		Super.Killed(Killer, KilledPlayer, KilledPawn, damageType);
+
+		if ( ToxikkMonster(KilledPawn) != None && ToxikkMonster(KilledPawn).bIsBossMonster && KilledPawn.Class == CurrentWave.Boss.LoadedClass )
+		{
+			foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
+			{
+				if ( M != KilledPawn )
+					M.Suicide();
+			}
+		}
+	}
 }
+
+
+//================================================
+// End game
+//================================================
 
 function GameOver(bool bWinner)
 {
@@ -616,7 +702,8 @@ function InitializeBot(UTBot NewBot, UTTeamInfo BotTeam, const out CharacterInfo
 /** Grouped function for PostLogin, AllowBecomeActivePlayer, and InitializeBot */
 function InitActivePlayer(Controller C)
 {
-	// done in ze States
+	bNeedRecalcPCAdjuster = true;
+	// rest done in ze States
 }
 
 // This is called when player wants to spawn, when he clicks while in Intro/lobby
@@ -639,18 +726,78 @@ function SetPlayerDefaults(Pawn PlayerPawn)
     // remove behind view in case we were just spectating
 	if ( UTPlayerController(PlayerPawn.Controller) != None )
 		UTPlayerController(PlayerPawn.Controller).SetBehindView(false);
+
+	if ( bNeedRecalcPCAdjuster )
+		RecalcPlayercountAdjuster();
 }
 
 function Logout(Controller Exiting)
 {
 	if ( GRI.bMatchHasBegun && !GRI.bMatchIsOver )
 	{
-		if ( Exiting != None && Exiting.PlayerReplicationInfo != None && !Exiting.PlayerReplicationInfo.bOnlySpectator && !Exiting.PlayerReplicationInfo.bOutOfLives )
+		if ( Exiting != None && Exiting.PlayerReplicationInfo != None && !Exiting.PlayerReplicationInfo.bOnlySpectator )
 		{
-			PlayerIsOut(Exiting);
+			if ( !Exiting.PlayerReplicationInfo.bOutOfLives )
+				PlayerIsOut(Exiting);
+
+			bNeedRecalcPCAdjuster = true;
 		}
 	}
 	Super.Logout(Exiting);
+}
+
+function RecalcPlayercountAdjuster()
+{
+	local int i, Count, j, cur;
+
+	for ( i=0; i<GRI.PRIArray.Length; i++ )
+	{
+		if ( InfekktedPRI(GRI.PRIArray[i]) != None && !GRI.PRIArray[i].bOnlySpectator )
+			Count++;
+	}
+
+	for ( i=2; i<=Count; i++ )
+	{
+		// find the right adjuster for each progressive playercount
+		cur = INDEX_NONE;
+		for ( j=0; j<Conf.PerPlayerDifficultyAdjusters.Length; j++ )
+		{
+			if ( Conf.PerPlayerDifficultyAdjusters[j].NumPlayers > i )
+				break;
+			cur = j;
+		}
+		if ( cur != INDEX_NONE )
+		{
+			if ( Conf.bMultiplicativeAdjusters )
+			{
+				PlayercountAdjuster.TotalMonsters *= Conf.PerPlayerDifficultyAdjusters[cur].TotalMonsters;
+				PlayercountAdjuster.SpawnRate *= Conf.PerPlayerDifficultyAdjusters[cur].SpawnRate;
+				PlayercountAdjuster.MaxDensity *= Conf.PerPlayerDifficultyAdjusters[cur].MaxDensity;
+				PlayercountAdjuster.Health *= Conf.PerPlayerDifficultyAdjusters[cur].Health;
+				PlayercountAdjuster.MeleeDamage *= Conf.PerPlayerDifficultyAdjusters[cur].MeleeDamage;
+				PlayercountAdjuster.RangeDamage *= Conf.PerPlayerDifficultyAdjusters[cur].RangeDamage;
+			}
+			else
+			{
+				PlayercountAdjuster.TotalMonsters += Conf.PerPlayerDifficultyAdjusters[cur].TotalMonsters - 1.0;
+				PlayercountAdjuster.SpawnRate += Conf.PerPlayerDifficultyAdjusters[cur].SpawnRate - 1.0;
+				PlayercountAdjuster.MaxDensity += Conf.PerPlayerDifficultyAdjusters[cur].MaxDensity - 1.0;
+				PlayercountAdjuster.Health += Conf.PerPlayerDifficultyAdjusters[cur].Health - 1.0;
+				PlayercountAdjuster.MeleeDamage += Conf.PerPlayerDifficultyAdjusters[cur].MeleeDamage - 1.0;
+				PlayercountAdjuster.RangeDamage += Conf.PerPlayerDifficultyAdjusters[cur].RangeDamage - 1.0;
+			}
+		}
+	}
+	bNeedRecalcPCAdjuster = false;
+	UpdateGlobalAdjusters();
+
+	`Log("[DEBUG] New PCAdjuster:"
+		@ "Total=" $ PlayercountAdjuster.TotalMonsters
+		@ "Spawn=" $ PlayercountAdjuster.SpawnRate
+		@ "Dens=" $ PlayercountAdjuster.MaxDensity
+		@ "HP=" $ PlayercountAdjuster.Health
+		@ "Melee=" $ PlayercountAdjuster.MeleeDamage
+		@ "Range=" $ PlayercountAdjuster.RangeDamage);
 }
 
 
@@ -729,7 +876,6 @@ function PlayerIsOut(Controller OutPlayer, optional Controller Killer=None)
 function SendToSpec(UTPlayerController PC)
 {
 	// done in MatchInProgress
-	`Log("[Infekkted] Error: call to SendToSpec() outside of wave states!");
 }
 
 
@@ -755,6 +901,48 @@ function int CalcMatchXPForPlayer(CRZPlayerController PC)
 //================================================
 // Misc
 //================================================
+
+function float CalcAvgMapSize()
+{
+	local NavigationPoint P;
+	local float Weight, Total;
+	local Vector Center;
+	local float AvgDist;
+
+	// calc center
+	Total = 0;
+	foreach WorldInfo.AllNavigationPoints(class'NavigationPoint', P)
+	{
+		Weight = WeightForNavPoint(P);
+		if ( Weight > 0 )
+		{
+			Center = (Total / (Total+Weight))*Center + (Weight / (Total+Weight))*P.Location;
+			Total += Weight;
+		}
+	}
+
+	if ( Total == 0 )
+	{
+		`Log("[Infekkted] Warning: map has no navigation!");
+		return MAPSIZE_REFERENCE;
+	}
+
+	// calc average distance from center (with less importance along Z axis)
+	AvgDist = 0.0;
+	foreach WorldInfo.AllNavigationPoints(class'NavigationPoint', P)
+	{
+		AvgDist += (WeightForNavPoint(P) / Total) * VSize( (P.Location - Center)*Vect(1.0,1.0,0.5) );
+	}
+	return AvgDist;
+}
+
+//TODO: add more types
+static function float WeightForNavPoint(NavigationPoint P)
+{
+	if ( P.IsA('PlayerStart') ) return 3;
+	if ( P.IsA('PathNode') ) return 1;
+	return 0;
+}
 
 function NavigationPoint FindMonsterStart(Controller C)
 {

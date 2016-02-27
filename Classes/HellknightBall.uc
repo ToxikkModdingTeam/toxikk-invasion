@@ -20,5 +20,5 @@ defaultproperties
 	bRotationFollowsVelocity=True
 	AccelRate=3000.000000
 	
-	MyDamageType=Class'DmgType_HellknightBall'
+	MyDamageType=Class'IFDmgType_HellknightBall'
 }
