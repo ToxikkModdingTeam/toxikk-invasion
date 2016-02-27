@@ -47,6 +47,7 @@ var()			float							PainSoundChance;
 // RangedDelay: Minimum time between ranged attacks before the next can occur
 // LungeSpeed: How much force is applied when we lunge toward the player
 // PreRotateModifier: Amount to speed up our rotation rate when we're prepping ranged attacks
+// ChatterTime: Time (in seconds) between idle / combat chatter noises
 
 // Nodes in the animtree
 var() 			AnimNodePlayCustomAnim 			CustomAnimator, WalkSwitch;
@@ -71,6 +72,8 @@ var()			float							RangedDelay, LungeSpeed;
 var()			name							LungeStartAnim, LungeMidAnim, LungeEndAnim;
 var()			float							PreRotateModifier;
 var()			float							CrawlChance;
+
+var()			float							ChatterTime;
 
 //--BOSS CAMERA----------------------------------------------------------------
 // bIsBossMonster: Uses the boss camera when spawning, also starts next wave
@@ -365,6 +368,8 @@ reliable server function SetBossCamera(bool bBoss)
 // Set up lighting and spawn a controller
 simulated function PostBeginPlay()
 {
+	// local NavigationPoint NP;
+	
 	Super.PostBeginPlay();
 	
 	// KEEP THE MODEL FROM LOOKING BLACK
@@ -373,7 +378,35 @@ simulated function PostBeginPlay()
 
 	// this must be off - Pawns spawned during gameplay have controller assigned manually
 	if (Role == ROLE_Authority)
+	{
 		SetTimer(1.0,false,'CheckController');
+		SetTimer(ChatterTime,true,'DoChatter');
+		
+		/*
+		// Spawn an emitter at every pathnode
+		ForEach AllActors(Class'NavigationPoint',NP)
+		{
+			Spawn(Class'PathIndicator',,,NP.Location);
+		}
+		*/
+	}
+}
+
+// Play idle / chatter sounds
+simulated function DoChatter()
+{
+	if (Controller == None || Health <= 0)
+		return;
+		
+	if (ToxikkMonsterController(Controller) != None)
+	{
+		// If we're in combat then play combatchatter
+		if (Pawn(ToxikkMonsterController(Controller).Target) != None)
+			PlaySound(ChatterSound,TRUE);
+		// Else, play idle
+		else
+			PlaySound(IdleSound,TRUE);
+	}
 }
 
 simulated function CheckController()
@@ -562,7 +595,7 @@ simulated function MeleeDamage()
 {
 	local vector V;
 	
-	if (ToxikkMonsterController(Controller).Target != None && ROLE == ROLE_Authority)
+	if (Pawn(ToxikkMonsterController(Controller).Target) != None && ROLE == ROLE_Authority)
 	{
 		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
 			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, V, None);
@@ -759,4 +792,8 @@ DefaultProperties
 	
 	// 0% chance
 	CrawlChance=0.0
+	ChatterTime=10.0
+	
+	bAvoidLedges=false
+	bStopAtLedges=false
 }

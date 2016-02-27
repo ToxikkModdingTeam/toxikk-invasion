@@ -437,7 +437,7 @@ state ChasePlayer
 		
 		// Allow trace too, because that means we're pretty much on the same level
 		// Run some Z checks just to be sure they're not up on a ledge or something
-		if (ActorReachable(Target) || (FastTrace(Target.Location,Pawn.Location) && Target.Location.Z < Pawn.Location.Z+100 && Target.Location.Z > Pawn.Location.Z - 25))
+		if (NavigationHandle.ActorReachable(Target) || ActorReachable(Target) || (FastTrace(Target.Location,Pawn.Location) && Target.Location.Z < Pawn.Location.Z+100 && Target.Location.Z > Pawn.Location.Z - 25))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
 			
@@ -456,6 +456,7 @@ state ChasePlayer
 			else
 				MoveToward(Target, Target, 20.0f);
 		}
+		// Otherwise, use pathfinding
 		else
 		{
 			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2));
