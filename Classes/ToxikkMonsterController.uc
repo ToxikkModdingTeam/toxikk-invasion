@@ -311,6 +311,8 @@ state Attacking
 	}
 	
 	Begin:
+		ToxikkMonster(Pawn).LastAttackTime = WorldInfo.TimeSeconds;
+		
 		DesiredRot = Rotation;
 		StateTimer = 0.0;
 		Pawn.Acceleration = vect(0,0,1);
@@ -360,6 +362,8 @@ state RangedAttack
 	}
 	
 	Begin:
+		ToxikkMonster(Pawn).LastAttackTime = WorldInfo.TimeSeconds;
+		
 		if (FRand() >= ToxikkMonster(Pawn).LungeChance && ToxikkMonster(Pawn).bHasLunge)
 		{
 			// If the monster has lunge while crouched then check if they're crouched
