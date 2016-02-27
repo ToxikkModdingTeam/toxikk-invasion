@@ -5,9 +5,6 @@ Class ToxikkMonster extends Pawn;
 var()			LightEnvironmentComponent		LEC;
 var()			SkeletalMeshComponent			FakeComponent;
 
-// Stored server-side
-var()			float							LastAttackTime;
-
 //=============================================================================
 //--SOUNDS---------------------------------------------------------------------
 // SightSound: Played when the monster finds a target and it's idling

@@ -454,18 +454,43 @@ State MatchInProgress
 			CheckLastMonsters();
 	}
 
-	// Very basic for now, but this is where we'll have to teleport unreachable monsters.
-	//TODO: each monster pawn should hold a timer, if he hasn't seen shit in 30-60 seconds he should be teleported somewhere else
+	// Relocate "unreachable" monsters - we are just checking if anything happened past the last X seconds
+	// If no monsters left, end of wave
+	//NOTE: maybe we should run the relocation checks during the whole wave, instead of only when approaching end ?
 	function CheckLastMonsters()
 	{
 		local ToxikkMonster M;
+		local int Count;
 
 		foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
 		{
-			return;
+			Count++;
+			if ( ToxikkMonsterController(M.Controller) != None
+			&& WorldInfo.TimeSeconds - ToxikkMonsterController(M.Controller).LastTimeSomethingHappened > 30
+			&& RelocateMonster(M) )
+			{
+				ToxikkMonsterController(M.Controller).LastTimeSomethingHappened = WorldInfo.TimeSeconds;
+				// `Log("[DEBUG] Monster " $ String(M.Name) $ " was relocated!");
+			}
 		}
 
-		EndOfWave();
+		if ( Count == 0 )
+			EndOfWave();
+	}
+
+	function bool RelocateMonster(ToxikkMonster M)
+	{
+		local NavigationPoint Spot;
+
+		Spot = FindMonsterStart(M.Controller);
+		if ( Spot != None && M.SetLocation(Spot.Location) )
+		{
+			M.Velocity = Vect(0,0,0);
+			M.SetRotation(Spot.Rotation);
+			M.SetPhysics(PHYS_Falling);
+			return true;
+		}
+		return false;
 	}
 
 	function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, class<DamageType> damageType)

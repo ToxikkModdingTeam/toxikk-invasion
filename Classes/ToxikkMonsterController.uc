@@ -15,6 +15,9 @@ var rotator DesiredRot;
 var bool bCanRanged;
 var float RangedTimer;
 
+// timestamp to relocate monster when nothing happens for too long
+var float LastTimeSomethingHappened;
+
 function vector PosPlusHeight(vector Pos)
 {
 	local float CR, CH;
@@ -33,8 +36,11 @@ event Possess(Pawn inPawn, bool bVehicleTransition)
 	local int Attempts;
 	
     super.Possess(inPawn, bVehicleTransition);
+
     Pawn.SetMovementPhysics();
-	
+
+	LastTimeSomethingHappened = WorldInfo.TimeSeconds;
+
 	if (ToxikkMonster(inPawn).bForceInitialTarget)
 	{
 		do
@@ -57,6 +63,7 @@ event Possess(Pawn inPawn, bool bVehicleTransition)
 event PostBeginPlay()
 {
 	super.PostBeginPlay();
+
 	NavigationHandle = new(self) class'NavigationHandle';
 }
 
@@ -84,7 +91,9 @@ simulated function LockOnTo(Pawn Seen)
 			
 		Target = Seen;
 		ToxikkMonster(Pawn).SeenSomething();
-	 
+
+		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
+
 		if (FRand() >= ToxikkMonster(Pawn).SightChance)
 			GotoState('Sight');
 		else
@@ -311,7 +320,7 @@ state Attacking
 	}
 	
 	Begin:
-		ToxikkMonster(Pawn).LastAttackTime = WorldInfo.TimeSeconds;
+		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 		
 		DesiredRot = Rotation;
 		StateTimer = 0.0;
@@ -362,7 +371,7 @@ state RangedAttack
 	}
 	
 	Begin:
-		ToxikkMonster(Pawn).LastAttackTime = WorldInfo.TimeSeconds;
+		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 		
 		if (FRand() >= ToxikkMonster(Pawn).LungeChance && ToxikkMonster(Pawn).bHasLunge)
 		{
