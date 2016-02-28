@@ -7,6 +7,9 @@
 //================================================================
 class InfekktedGRI extends CRZGameReplicationInfo;
 
+/** Server Replicated - Calculated average map size (for radar distance) */
+var float AvgMapSize;
+
 /** Server Replicated - Current wave index */
 var byte CurrentWave;
 
@@ -15,6 +18,9 @@ var RepNotify String WaveName;
 
 Replication
 {
+	if ( bNetInitial )
+		AvgMapSize;
+
 	if ( bNetInitial || bNetDirty )
 		CurrentWave, WaveName;
 }

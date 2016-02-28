@@ -117,6 +117,9 @@ var()			float							ShakeDistance;
 
 replication
 {
+	if ( bNetInitial )
+		bIsBossMonster;
+
 	if (bNetDirty || bNetInitial)
 		bIsCrawling;
 }

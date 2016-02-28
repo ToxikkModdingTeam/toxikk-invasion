@@ -49,6 +49,15 @@ var int PenaltyCount;
 // Game init
 //================================================
 
+function InitGameReplicationInfo()
+{
+    Super.InitGameReplicationInfo();
+
+    GRI = InfekktedGRI(GameReplicationInfo);
+	GRI.CurrentWave = 0;
+	GRI.TimeLimit = 1;  // Set TimeLimit to non-zero so HUD displays RemainingTime and not ElapsedTime
+}
+
 function PostBeginPlay()
 {
 	Super.PostBeginPlay();
@@ -64,9 +73,11 @@ function PostBeginPlay()
 	Conf = new class'InfekktedConfig';
 	Conf.Init();
 
-	CalcMapAdjusters();
-
 	Conf.PerPlayerDifficultyAdjusters.Sort(CompareAdjusters);
+
+	GRI.AvgMapSize = CalcAvgMapSize();
+	`Log("[DEBUG] Calculated avg mapsize: " $ GRI.AvgMapSize);
+	CalcMapAdjusters();
 
 	LoadWaves();
 }
@@ -74,6 +85,32 @@ function PostBeginPlay()
 static function int CompareAdjusters(sPlayerCountAdjuster A, sPlayerCountAdjuster B)
 {
 	return (B.NumPlayers - A.NumPlayers);
+}
+
+function CalcMapAdjusters()
+{
+	local int i;
+	local float SizeDiff;
+
+	i = Conf.MapAdjusters.Find('Map', WorldInfo.GetMapName(true));
+	if ( i != INDEX_None )
+	{
+		`Log("[DEBUG] Using configured " $ Conf.MapAdjusters[i].Map $ " MapAdjuster");
+		MapAdjuster = Conf.MapAdjusters[i];
+	}
+	else
+	{
+		`Log("[DEBUG] Using fallback AutoMapAdjuster");
+		SizeDiff = GRI.AvgMapSize / MAPSIZE_REFERENCE;
+		`Log("[DEBUG] SizeDiff = " $ SizeDiff);
+		MapAdjuster.TotalMonsters = 1.0 + (SizeDiff - 1.0) * Conf.AutoMapAdjuster.TotalMonsters;
+		MapAdjuster.SpawnRate     = 1.0 + (SizeDiff - 1.0) * Conf.AutoMapAdjuster.SpawnRate;
+		MapAdjuster.MaxDensity    = 1.0 + (SizeDiff - 1.0) * Conf.AutoMapAdjuster.MaxDensity;
+	}
+	`Log("[DEBUG] MapAdjuster:"
+		@ "Total=" $ MapAdjuster.TotalMonsters
+		@ "Spawn=" $ MapAdjuster.SpawnRate
+		@ "Dens=" $ MapAdjuster.MaxDensity);
 }
 
 function LoadWaves()
@@ -110,36 +147,6 @@ function LoadWaves()
 		`Log("[Infekkted] ERROR: Game doesn't have any waves!");
 }
 
-function CalcMapAdjusters()
-{
-	local int i;
-	local float Size, SizeDiff;
-
-	i = Conf.MapAdjusters.Find('Map', WorldInfo.GetMapName(true));
-	if ( i != INDEX_None )
-		MapAdjuster = Conf.MapAdjusters[i];
-	else
-	{
-		`Log("[DEBUG] Using fallback AutoMapAdjuster");
-		Size = CalcAvgMapSize();
-		`Log("[DEBUG] Calculated avg mapsize: " $ Size);
-		SizeDiff = Size / MAPSIZE_REFERENCE;
-		`Log("[DEBUG] SizeDiff = " $ SizeDiff);
-		MapAdjuster.TotalMonsters = SizeDiff * Conf.AutoMapAdjuster.TotalMonsters;
-		MapAdjuster.SpawnRate = SizeDiff * Conf.AutoMapAdjuster.SpawnRate;
-		MapAdjuster.MaxDensity = SizeDiff * Conf.AutoMapAdjuster.MaxDensity;
-	}
-}
-
-function InitGameReplicationInfo()
-{
-    Super.InitGameReplicationInfo();
-
-    GRI = InfekktedGRI(GameReplicationInfo);
-	GRI.CurrentWave = 0;
-	GRI.TimeLimit = 1;  // Set TimeLimit to non-zero so HUD displays RemainingTime and not ElapsedTime
-}
-
 
 //================================================
 // General
@@ -150,6 +157,11 @@ function UpdateGlobalAdjusters()
 	AdjustedTotalMonsters = CurrentWave.TotalMonsters * MapAdjuster.TotalMonsters * PlayercountAdjuster.TotalMonsters;
 	AdjustedSpawnRate = CurrentWave.SpawnRate * MapAdjuster.SpawnRate * PlayercountAdjuster.SpawnRate;
 	AdjustedMaxDensity = CurrentWave.MaxDensity * MapAdjuster.MaxDensity * PlayercountAdjuster.MaxDensity;
+
+	`Log("[DEBUG] Updated GlobalAdjusters:"
+		@ "Total=" $ AdjustedTotalMonsters
+		@ "Spawn=" $ AdjustedSpawnRate
+		@ "Dens=" $ AdjustedMaxDensity);
 }
 
 
@@ -464,18 +476,21 @@ State MatchInProgress
 
 		foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
 		{
-			Count++;
-			if ( ToxikkMonsterController(M.Controller) != None
-			&& WorldInfo.TimeSeconds - ToxikkMonsterController(M.Controller).LastTimeSomethingHappened > 30
-			&& RelocateMonster(M) )
+			if ( M.Health > 0 )
 			{
-				ToxikkMonsterController(M.Controller).LastTimeSomethingHappened = WorldInfo.TimeSeconds;
-				// `Log("[DEBUG] Monster " $ String(M.Name) $ " was relocated!");
+				Count++;
+				if ( ToxikkMonsterController(M.Controller) != None
+				&& WorldInfo.TimeSeconds - ToxikkMonsterController(M.Controller).LastTimeSomethingHappened > 30
+				&& RelocateMonster(M) )
+				{
+					ToxikkMonsterController(M.Controller).LastTimeSomethingHappened = WorldInfo.TimeSeconds;
+					// `Log("[DEBUG] Monster " $ String(M.Name) $ " was relocated!");
+				}
 			}
 		}
 
 		if ( Count == 0 )
-			EndOfWave();
+			GotoState('EndOfWave');
 	}
 
 	function bool RelocateMonster(ToxikkMonster M)
@@ -514,18 +529,6 @@ State MatchInProgress
 		PC.ClearTimer('SetDroneViewToKiller');
 		PC.ServerSpectate();
 		InfekktedPRI(PC.PlayerReplicationInfo).ClientForceSpectate();
-	}
-
-	function EndOfWave()
-	{
-		if ( GRI.CurrentWave+1 < LoadedWaves.Length )
-		{
-			BroadcastLocalizedMessage(class'InfekktedMessage', 3);
-			GRI.CurrentWave += 1;
-			GotoState('PreWaveCountdown');
-		}
-		else
-			GameOver(true);
 	}
 }
 
@@ -616,6 +619,27 @@ State BossInProgress extends MatchInProgress
 					M.Suicide();
 			}
 		}
+	}
+}
+
+// delay stuff a bit for smoothness
+State EndOfWave
+{
+	function BeginState(Name PrevStateName)
+	{
+		SetTimer(2.0, false, 'RealEndOfWave');
+	}
+
+	function RealEndOfWave()
+	{
+		if ( GRI.CurrentWave+1 < LoadedWaves.Length )
+		{
+			BroadcastLocalizedMessage(class'InfekktedMessage', 3);
+			GRI.CurrentWave += 1;
+			GotoState('PreWaveCountdown');
+		}
+		else
+			GameOver(true);
 	}
 }
 
@@ -813,8 +837,6 @@ function RecalcPlayercountAdjuster()
 			}
 		}
 	}
-	bNeedRecalcPCAdjuster = false;
-	UpdateGlobalAdjusters();
 
 	`Log("[DEBUG] New PCAdjuster:"
 		@ "Total=" $ PlayercountAdjuster.TotalMonsters
@@ -823,6 +845,9 @@ function RecalcPlayercountAdjuster()
 		@ "HP=" $ PlayercountAdjuster.Health
 		@ "Melee=" $ PlayercountAdjuster.MeleeDamage
 		@ "Range=" $ PlayercountAdjuster.RangeDamage);
+
+	bNeedRecalcPCAdjuster = false;
+	UpdateGlobalAdjusters();
 }
 
 
@@ -1072,6 +1097,7 @@ defaultproperties
 
 	PlayerReplicationInfoClass=class'InfekktedPRI'
 	GameReplicationInfoClass=class'InfekktedGRI'
+	HUDType=class'InfekktedHud'
 
 	// Default set of options to publish to the online service
 	OnlineGameSettingsClass=class'CRZGameSettingsBL'
