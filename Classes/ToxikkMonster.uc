@@ -376,7 +376,6 @@ simulated function PostBeginPlay()
 	FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
 	LEC.SetEnabled(true); // now the dynamic light component
 
-	// this must be off - Pawns spawned during gameplay have controller assigned manually
 	if (Role == ROLE_Authority)
 	{
 		SetTimer(1.0,false,'CheckController');
@@ -737,7 +736,7 @@ DefaultProperties
     Components.Add(MainMesh)
 	Components.Add(MyLightEnvironment)
 	
-	ControllerClass=class'Infekkted.ToxikkMonsterController'
+	ControllerClass=class'ToxikkMonsterController'
 
 	// Monsters can't jump
     bJumpCapable=false
