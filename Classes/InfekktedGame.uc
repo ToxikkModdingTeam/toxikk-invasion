@@ -623,7 +623,7 @@ State BossInProgress extends MatchInProgress
 }
 
 // delay stuff a bit for smoothness
-State EndOfWave
+State EndOfWave extends MatchInProgress
 {
 	function BeginState(Name PrevStateName)
 	{
@@ -641,6 +641,9 @@ State EndOfWave
 		else
 			GameOver(true);
 	}
+
+	function Timer() {}
+	function TimeUp() {}
 }
 
 
