@@ -132,7 +132,7 @@ DefaultProperties
 		LightingChannels=(BSP=true,Static=true)
 		LightEnvironment=MyLightEnvironment
 		bHasPhysicsAssetInstance=true
-		PhysicsAsset=PhysicsAsset'Doom3Monsters.Boney.boney_mesh_Physics'
+		PhysicsAsset=PhysicsAsset'Doom3Monsters.Cyberdemon.cyberdemon_mesh_Physics'
 		PhysicsWeight=0.0
     End Object
     Mesh=MainMesh
@@ -165,7 +165,7 @@ DefaultProperties
 	// Used for stomp damage here, instantly kill a player
 	PunchDamage=500
 	
-	Health=1500
+	Health=3500
 	
 	AttackDistance=200
 	RangedAttackDistance=20000
@@ -182,4 +182,6 @@ DefaultProperties
 	SightChance=0.0
 	
 	SightRadius=1.0
+	
+	Mass=10000
 }

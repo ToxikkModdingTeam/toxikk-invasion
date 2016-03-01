@@ -50,6 +50,8 @@ DefaultProperties
 	// Bruiser walks while attacking
 	bWalkingAttack=true
 	bWalkingRanged=true
+	
+	Mass=2000
 
 	// SKELETAL MESH
     Begin Object Name=MainMesh

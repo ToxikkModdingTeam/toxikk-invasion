@@ -338,6 +338,7 @@ state Attacking
 			GotoState('Wander');
 }
 
+simulated function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
@@ -363,6 +364,8 @@ state RangedAttack
 	
 	Begin:
 		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
+		
+		RangedException();
 		
 		if (FRand() >= ToxikkMonster(Pawn).LungeChance && ToxikkMonster(Pawn).bHasLunge)
 		{

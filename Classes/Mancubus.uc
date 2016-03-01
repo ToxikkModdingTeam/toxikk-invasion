@@ -76,4 +76,6 @@ DefaultProperties
 	RunningAnim=Walk
 	
 	SightAnims(0)=Sight
+	
+	Mass=10000
 }

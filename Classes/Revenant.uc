@@ -78,4 +78,6 @@ DefaultProperties
 	
 	SightAnims(0)=Sight
 	SightAnims(1)=Sight2
+	
+	Mass=400
 }

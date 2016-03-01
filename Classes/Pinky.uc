@@ -78,4 +78,6 @@ DefaultProperties
 	SightAnims(2)=Roar3
 	
 	bUseAimOffset=false
+	
+	Mass=300
 }

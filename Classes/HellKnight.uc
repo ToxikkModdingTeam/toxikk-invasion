@@ -79,7 +79,7 @@ DefaultProperties
 		LightingChannels=(BSP=true,Static=true)
 		LightEnvironment=MyLightEnvironment
 		bHasPhysicsAssetInstance=true
-		PhysicsAsset=PhysicsAsset'Doom3Monsters.Bruiser.bruiser_mesh_Physics'
+		PhysicsAsset=PhysicsAsset'Doom3Monsters.HellKnight.hellknight_mesh_Physics'
 		PhysicsWeight=0.0
 		Translation=(Z=-16.0)
     End Object
@@ -132,4 +132,6 @@ DefaultProperties
 	RunningAnim=Walk
 	
 	SightAnims(0)=Roar
+	
+	Mass=2000
 }
