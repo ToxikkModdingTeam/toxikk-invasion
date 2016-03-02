@@ -415,6 +415,10 @@ state RangedAttack
 			GotoState('Wander');
 }
 
+function bool ExtraRangedException()
+{
+	return true;
+}
 
 state ChasePlayer
 {	
@@ -442,7 +446,7 @@ state ChasePlayer
 				break;
 			}
 			// OTHERWISE, CAN WE RANGED ATTACK?
-			else if (DistanceToPlayer <= ToxikkMonster(Pawn).RangedAttackDistance && ToxikkMonster(Pawn).bHasRanged && FastTrace(Target.Location, PosPlusHeight(Pawn.Location)) && RangedTimer >= ToxikkMonster(Pawn).RangedDelay)
+			else if (DistanceToPlayer <= ToxikkMonster(Pawn).RangedAttackDistance && ToxikkMonster(Pawn).bHasRanged && FastTrace(Target.Location, PosPlusHeight(Pawn.Location)) && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException())
 			{
 				GotoState('PreAttack');
 				break;
