@@ -1,5 +1,5 @@
 // Vagary spikeballs
-Class VagaryShard extends KActorSpawnable;
+Class VagaryShard extends Pawn;
 
 var			Vector							DestVector;
 var			bool							bIsRising;
@@ -30,13 +30,22 @@ simulated function Destroyed()
 	super.Destroyed();
 }
 
+// Never take damage
+event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser);
+
 // StaticMesh=StaticMesh'Doom3Monsters.vagary.vagary_spike'
 
 defaultproperties
 {
 	RiseHeight=250
+	Health=9999
 	
-	Begin Object Name=StaticMeshComponent0
+	Begin Object Name=CollisionCylinder
+        CollisionHeight=20.0
+		CollisionRadius=20.0
+    End Object
+	
+	Begin Object Name=StaticMeshComponent0 Class=StaticMeshComponent
         StaticMesh=StaticMesh'Doom3Monsters.vagary.vagary_spike'
 		bCollideActors=true
 		bBlockActors=true
@@ -58,10 +67,8 @@ defaultproperties
     bWakeOnLevelStart=true
 	bBlockActors=true	
     bWakeOnLevelStart=true
-	bLimitMaxPhysicsVelocity=true
-	MaxPhysicsVelocity=500
     CollisionType=COLLIDE_BlockAll
 	bCollideComplex=true
 	
-	Physics=PHYS_RigidBody
+	Physics=PHYS_Falling
 }

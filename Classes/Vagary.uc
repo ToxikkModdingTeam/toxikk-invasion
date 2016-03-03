@@ -57,6 +57,8 @@ simulated function SpawnShards()
 	local int l;
 	local NavigationPoint NP;
 	local VagaryShard VS;
+	local int Attempts;
+	local vector V;
 	
 	DestroyShards();
 	Shards.Length=0;
@@ -65,6 +67,7 @@ simulated function SpawnShards()
 	for (l=0; l<NumShards; l++)
 	{
 		VS = None;
+		Attempts=0;
 		
 		do
 		{
@@ -72,12 +75,18 @@ simulated function SpawnShards()
 			{
 				if (FRand() >= 1.0-ShardSpawnChance)
 				{
-					VS = Spawn(Class'VagaryShard',,,NP.Location);
-					Shards.AddItem(VS);
+					V = NP.Location;
+					V.Z += 65;
+					
+					VS = Spawn(Class'VagaryShard',,,V);
+					if (VS != None)
+						Shards.AddItem(VS);
+					
+					Attempts ++;
 					break;
 				}
 			}
-		} until (VS != None);
+		} until (VS != None || Attempts >= 15);
 	}
 }
 
@@ -89,7 +98,8 @@ function bool CanUseShards()
 	
 	for (l=0; l<Shards.Length; l++)
 	{
-		if (VSize(Shards[l].Location - Location) <= ShardCheckRadius)
+		// Shards within a certain radius but also in front of us
+		if (VSize(Shards[l].Location - Location) <= ShardCheckRadius && (GetInFront(Shards[l],Self) < 0.5 && GetInFront(Shards[l],Self) > -0.5))
 			bFound=true;
 	}
 	
@@ -183,7 +193,7 @@ DefaultProperties
 		bHasPhysicsAssetInstance=true
 		PhysicsAsset=PhysicsAsset'Doom3Monsters.Imp.imp_mesh_Physics'
 		PhysicsWeight=0.0
-		Translation=(Z=-1.0)
+		Translation=(Z=-27.0)
     End Object
     Mesh=MainMesh
 
