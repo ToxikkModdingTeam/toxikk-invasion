@@ -47,15 +47,12 @@ defaultproperties
 	
 	Begin Object Name=StaticMeshComponent0 Class=StaticMeshComponent
         StaticMesh=StaticMesh'Doom3Monsters.vagary.vagary_spike'
-		bCollideActors=true
-		bBlockActors=true
         bNotifyRigidBodyCollision=true
 		BlockRigidBody=true        
         BlockNonZeroExtent=true
 		BlockZeroExtent=true
 		BlockActors=true
 		CollideActors=true
-		CollideWorld=true
 		ScriptRigidBodyCollisionThreshold=0.001 
 		AlwaysCheckCollision=true
 		RBCollideWithChannels=(Default=TRUE,BlockingVolume=TRUE,GameplayPhysics=TRUE,EffectPhysics=TRUE,Pawn=TRUE)
@@ -64,9 +61,7 @@ defaultproperties
     CollisionComponent=StaticMeshComponent0
 	Components.Add(StaticMeshComponent0)
 
-    bWakeOnLevelStart=true
 	bBlockActors=true	
-    bWakeOnLevelStart=true
     CollisionType=COLLIDE_BlockAll
 	bCollideComplex=true
 	
