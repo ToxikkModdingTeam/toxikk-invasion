@@ -103,6 +103,7 @@ simulated function LockOnTo(Pawn Seen)
 state PreAttack
 {
 	Begin:
+		BeginNotify("PreAttack");
 		Pawn.Acceleration = vect(0,0,1);
 		
 		// Make our pawn rotate twice as quickly
@@ -149,6 +150,7 @@ state Lunging
 	}
 	
 	Begin:
+		BeginNotify("Lunging");
 		DesiredRot = Rotation;
 		Pawn.Acceleration = vect(0,0,1);
 		// `Log("Preparing to lunge...");
@@ -196,6 +198,7 @@ state Sight
 	}
 	
 	Begin:
+		BeginNotify("Sight");
 		DesiredRot = Rotation;
 		Pawn.Acceleration = vect(0,0,1);
 		
@@ -245,6 +248,9 @@ state Idling
 		if (Target != None)
 			LockOnTo(Pawn(Target));
 	}
+	
+	Begin:
+		BeginNotify("Idling");
 }
 
 // ROAM AND LOOK FOR A PLAYER
@@ -267,6 +273,7 @@ auto state Wander
 	}
 	
 	Begin:
+		BeginNotify("Wander");
 		// `Log("Begin wander");
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
@@ -315,6 +322,7 @@ state Attacking
 	}
 	
 	Begin:
+		BeginNotify("Attacking");
 		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 		
 		DesiredRot = Rotation;
@@ -363,6 +371,7 @@ state RangedAttack
 	}
 	
 	Begin:
+		BeginNotify("RangedAttack");
 		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 		
 		RangedException();
@@ -429,6 +438,7 @@ state ChasePlayer
 	}
 	
   Begin:
+	BeginNotify("ChasePlayer");
     Pawn.Acceleration = vect(0,0,1);
 	
     While (Pawn != none && Target != None)
@@ -503,6 +513,9 @@ state ChasePlayer
 			GotoState('Wander');
     }
 }
+
+// Optional things can be done when a state begins
+function BeginNotify(string StateName);
 
 defaultproperties
 {
