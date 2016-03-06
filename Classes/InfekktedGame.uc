@@ -9,7 +9,6 @@ class InfekktedGame extends CRZGame
 	Config(Infekkted)
 	DependsOn(WaveConfig);
 
-
 //================================================
 // Config
 //================================================
@@ -627,6 +626,7 @@ State EndOfWave extends MatchInProgress
 {
 	function BeginState(Name PrevStateName)
 	{
+		GRI.bStopCountDown = true;
 		SetTimer(2.0, false, 'RealEndOfWave');
 	}
 
@@ -646,6 +646,29 @@ State EndOfWave extends MatchInProgress
 	function TimeUp() {}
 }
 
+// delay end of game a bit after last player died
+State EndOfGame extends MatchInProgress
+{
+	function BeginState(Name PrevStateName)
+	{
+		GRI.bStopCountDown = true;
+
+		if ( PrevStateName == 'EndOfWave' )
+			RealEndOfGame();
+		else
+			SetTimer(2.0, false, 'RealEndOfGame');
+	}
+
+	function RealEndOfGame()
+	{
+		GRI.Winner = GRI.GetCurrentBestPlayer();
+		EndGame(PlayerReplicationInfo(GRI.Winner), "triggered");
+	}
+
+	function Timer() {}
+	function TimeUp() {}
+}
+
 
 //================================================
 // End game
@@ -654,8 +677,7 @@ State EndOfWave extends MatchInProgress
 function GameOver(bool bWinner)
 {
 	bPlayersWon = bWinner;
-	GRI.Winner = GRI.GetCurrentBestPlayer();    // always set even if loss, to avoid log flood
-	EndGame(PlayerReplicationInfo(GRI.Winner), "triggered");
+	GotoState('EndOfGame');
 }
 
 function bool CheckEndGame(PlayerReplicationInfo Winner, string Reason)
@@ -807,6 +829,13 @@ function RecalcPlayercountAdjuster()
 		if ( InfekktedPRI(GRI.PRIArray[i]) != None && !GRI.PRIArray[i].bOnlySpectator )
 			Count++;
 	}
+
+	PlayercountAdjuster.TotalMonsters = 1.0;
+	PlayercountAdjuster.SpawnRate = 1.0;
+	PlayercountAdjuster.MaxDensity = 1.0;
+	PlayercountAdjuster.Health = 1.0;
+	PlayercountAdjuster.MeleeDamage = 1.0;
+	PlayercountAdjuster.RangeDamage = 1.0;
 
 	for ( i=2; i<=Count; i++ )
 	{
@@ -1090,8 +1119,21 @@ function bool WantsPickups(UTBot B)
 	return true;
 }
 
+function UTTeamInfo GetBotTeam(optional int TeamBots, optional bool bUseTeamIndex, optional int TeamIndex)
+{
+	if ( EnemyRoster == None )
+	{
+		EnemyRoster = Spawn(class'CRZDMRoster');
+		CRZDMRoster(EnemyRoster).DMSquadClass = class'InfekktedSquad';
+		EnemyRoster.Initialize(TeamIndex);
+	}
+	return EnemyRoster;
+}
+
 defaultproperties
 {
+	bWeaponStay=true
+
 	Acronym="IF"
 	MapPrefixes[0]="BL"
 	MapPrefixes[1]="CC"
