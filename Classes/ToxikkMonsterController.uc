@@ -496,7 +496,7 @@ state ChasePlayer
 				Target = None;
 		}
 
-		Sleep(0.01);
+		Sleep(0.5);
 		
 		// NO TARGET? Idle
 		if (Target == None)
