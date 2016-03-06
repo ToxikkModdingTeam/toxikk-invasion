@@ -122,6 +122,9 @@ simulated function DrawRadar()
 	local int i;
 	local float DistSqrt, DistOnRadar, Angle;
 
+	if ( CurrentHudMode != HM_Game && CurrentHudMode != HM_Spectating )
+		return;
+
 	RadarPosX = Canvas.ClipX - 1.1*RadarSize;
 	RadarPosY = Canvas.ClipY * 0.2;
 
