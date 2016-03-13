@@ -21,7 +21,6 @@ var InfekktedConfig Conf;
 
 //internal
 var InfekktedGRI GRI;
-var array<WaveConfig> LoadedWaves;
 var bool bPlayersWon;
 
 // adjusters
@@ -72,18 +71,9 @@ function PostBeginPlay()
 	Conf = new class'InfekktedConfig';
 	Conf.Init();
 
-	Conf.PerPlayerDifficultyAdjusters.Sort(CompareAdjusters);
-
 	GRI.AvgMapSize = CalcAvgMapSize();
 	`Log("[DEBUG] Calculated avg mapsize: " $ GRI.AvgMapSize);
 	CalcMapAdjusters();
-
-	LoadWaves();
-}
-
-static function int CompareAdjusters(sPlayerCountAdjuster A, sPlayerCountAdjuster B)
-{
-	return (B.NumPlayers - A.NumPlayers);
 }
 
 function CalcMapAdjusters()
@@ -110,40 +100,6 @@ function CalcMapAdjusters()
 		@ "Total=" $ MapAdjuster.TotalMonsters
 		@ "Spawn=" $ MapAdjuster.SpawnRate
 		@ "Dens=" $ MapAdjuster.MaxDensity);
-}
-
-function LoadWaves()
-{
-	local array<String> AllWaves;
-	local int i, j;
-	local WaveConfig Wave;
-
-	class'WaveConfig'.static.GetWavesList(AllWaves);
-
-	for ( i=0; i<Conf.Waves.Length; i++ )
-	{
-		// find wave in waves list
-		for ( j=0; j<AllWaves.Length; j++ )
-			if ( AllWaves[j] ~= Conf.Waves[i] )
-				break;
-		if ( j < AllWaves.Length)
-		{
-			// load wave object (invalid config will return None)
-			Wave = class'WaveConfig'.static.LoadWave(AllWaves[j], false);
-			if ( Wave != None )
-			{
-				Wave.LoadMonsters();
-				LoadedWaves.AddItem(Wave);
-			}
-			else
-				`Log("[Infekkted] Wave " $ i $ " '" $ Conf.Waves[i] $ "' has invalid configuration - skipping");
-		}
-		else
-			`Log("[Infekkted] Wave " $ i $ " '" $ Conf.Waves[i] $ "' not found - skipping");
-	}
-		
-	if ( LoadedWaves.Length == 0 )
-		`Log("[Infekkted] ERROR: Game doesn't have any waves!");
 }
 
 
@@ -187,7 +143,7 @@ State PreWaveCountdown
 		local int i;
 
 		// Setup new wave
-		CurrentWave = LoadedWaves[GRI.CurrentWave];
+		CurrentWave = Conf.LoadedWaves[GRI.CurrentWave];
 
 		if ( bNeedRecalcPCAdjuster )
 			RecalcPlayercountAdjuster();
@@ -229,6 +185,12 @@ State PreWaveCountdown
 	{
 		GRI.SetRemainingTime(CurrentWave.PreWaveCountdown);
 		GRI.bStopCountDown = false;
+	}
+
+	// admin/standalone command
+	exec function SkipWave()
+	{
+		TimeUp();
 	}
 
 	function TimeUp()
@@ -395,7 +357,7 @@ State MatchInProgress
 		local int rng, i, pick;
 		local Controller C;
 		local NavigationPoint StartSpot;
-		local Pawn M;
+		local ToxikkMonster M;
 
 		rng = Rand(MonstersListTotalWeight);
 		for ( i=0; i<CurrentWave.LoadedMonsters.Length; i++ )
@@ -427,20 +389,17 @@ State MatchInProgress
 		return false;
 	}
 
-	function ApplyAdjustements(Pawn M, sMonsterDef MonsterDef)
+	function ApplyAdjustements(ToxikkMonster M, sMonsterDef MonsterDef)
 	{
-		// without adjusters
-		M.SetDrawScale(MonsterDef.Scale);
-		M.GroundSpeed *= MonsterDef.Speed;
-		// with adjusters
 		//TODO: see about the formula: param *= (MonsterDef.param + Adjuster.param - 1.0)
-		M.Health = MonsterDef.Health * PlayercountAdjuster.Health;
-		if ( M.IsA('ToxikkMonster') )
-		{
-			ToxikkMonster(M).PunchDamage *= MonsterDef.MeleeDamage * PlayercountAdjuster.MeleeDamage;
-			ToxikkMonster(M).LungeDamage *= MonsterDef.RangeDamage * PlayercountAdjuster.RangeDamage;
-			ToxikkMonster(M).ProjDamageMult *= MonsterDef.RangeDamage * PlayercountAdjuster.RangeDamage;
-		}
+		M.SetParameters(
+			MonsterDef.Scale,
+			MonsterDef.Health * PlayercountAdjuster.Health,
+			MonsterDef.Speed,
+			MonsterDef.MeleeDamage * PlayercountAdjuster.MeleeDamage,
+			MonsterDef.RangeDamage * PlayercountAdjuster.RangeDamage,
+			MonsterDef.Extras
+		);
 	}
 
 	/** When there are no more monsters to spawn, start counting towards end of wave.
@@ -463,6 +422,17 @@ State MatchInProgress
 		}
 		else
 			CheckLastMonsters();
+	}
+
+	// admin/standalone command
+	exec function SkipWave()
+	{
+		local ToxikkMonster M;
+
+		SpawnedMonsters = AdjustedTotalMonsters;
+		MonstersToSpawn = 0;
+		foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
+			M.Suicide();
 	}
 
 	// Relocate "unreachable" monsters - we are just checking if anything happened past the last X seconds
@@ -575,7 +545,7 @@ State BossInProgress extends MatchInProgress
 	{
 		local Controller C;
 		local NavigationPoint StartSpot;
-		local Pawn M;
+		local ToxikkMonster M;
 
 		C = Spawn(CurrentWave.Boss.LoadedClass.default.ControllerClass);
 		if ( C != None )
@@ -586,9 +556,8 @@ State BossInProgress extends MatchInProgress
 				M = Spawn(CurrentWave.Boss.LoadedClass,,, StartSpot.Location, StartSpot.Rotation);
 				if ( M != None )
 				{
+					M.SetMonsterIsBoss();
 					ApplyAdjustements(M, CurrentWave.Boss);
-					if ( ToxikkMonster(M) != None )
-						ToxikkMonster(M).SetMonsterIsBoss();
 					C.Possess(M, false);
 					return true;
 				}
@@ -632,7 +601,7 @@ State EndOfWave extends MatchInProgress
 
 	function RealEndOfWave()
 	{
-		if ( GRI.CurrentWave+1 < LoadedWaves.Length )
+		if ( GRI.CurrentWave+1 < Conf.LoadedWaves.Length )
 		{
 			BroadcastLocalizedMessage(class'InfekktedMessage', 3);
 			GRI.CurrentWave += 1;
@@ -891,32 +860,99 @@ function ReduceDamage(out int Damage, Pawn Injured, Controller InstigatedBy, Vec
 {
 	Super.ReduceDamage(Damage, injured, InstigatedBy, HitLocation, Momentum, DamageType, DamageCauser);
 
-	// Take care of team-damage !
-	// Since all players are on team 255, FriendlyFireScale must not have been taken into account (we forced it to 1.0 anyways)
-	// What is the best way to check players are not monster ? CRZPawn ?? CRZPRI ???
-	if ( Damage > 0
-		&& Injured != None && InfekktedPRI(Injured.PlayerReplicationInfo) != None
-		&& InstigatedBy != None && InfekktedPRI(InstigatedBy.PlayerReplicationInfo) != None
-		&& Injured != InstigatedBy.Pawn )
+	if ( Damage > 0 && InstigatedBy != None && InfekktedPRI(InstigatedBy.PlayerReplicationInfo) != None && Injured != InstigatedBy.Pawn )
 	{
-		// retaliate
-		if ( InstigatedBy.Pawn != None )
-			InstigatedBy.Pawn.TakeDamage(Damage * Conf.TeamDamageRetaliate, InstigatedBy, Injured.Location, Vect(0,0,0), DamageType);
+		// Damage-based scoring !
+		if ( ToxikkMonster(Injured) != None )
+		{
+			InfekktedPRI(InstigatedBy.PlayerReplicationInfo).AddDamage( Min(Damage, Injured.Health) );
+		}
 
-		// reduce
-		Damage *= Conf.TeamDamageDirect;
+		// Take care of team-damage !
+		// Since all players are on team 255, FriendlyFireScale must not have been taken into account (we forced it to 1.0 anyways)
+		else if ( Injured != None && InfekktedPRI(Injured.PlayerReplicationInfo) != None )
+		{
+			// retaliate
+			if ( InstigatedBy.Pawn != None )
+				InstigatedBy.Pawn.TakeDamage(Damage * Conf.TeamDamageRetaliate, InstigatedBy, Injured.Location, Vect(0,0,0), DamageType);
+
+			// reduce
+			Damage *= Conf.TeamDamageDirect;
+		}
 	}
 }
 
 function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, class<DamageType> damageType)
 {
-	//TODO: override all this shit later
+	local ToxikkMonster M;
+	local int i, grp, type;
+	local float pct;
+	local LootOrb Orb;
+
 	Super.Killed(Killer, KilledPlayer, KilledPawn, damageType);
+
+	M = ToxikkMonster(KilledPawn);
+	if ( M != None && Killer != None && Killer.PlayerReplicationInfo != None )
+	{
+		// Spawn orbs
+		for ( i=0; i<Conf.OrbDropRates.Length; i++ )
+		{
+			pct = FMin(float(M.HealthMax - Conf.OrbDropRates[i].MinHP) / float(Conf.OrbDropRates[i].MaxHP - Conf.OrbDropRates[i].MinHP), 1.0);
+			if ( pct >= 0 && FRand() <= (Conf.OrbDropRates[i].MinChance + pct*(Conf.OrbDropRates[i].MaxChance-Conf.OrbDropRates[i].MinChance)) )
+			{
+				// spawning an orb!
+				grp = PickOrbGroup(M);
+				type = PickOrb(grp);
+				if ( type == -1 )
+				{
+					`Log("[Infekkted] Error - failed to pick orb to spawn (group=" $ grp $ ",orb=" $ type $ ")");
+					continue;
+				}
+
+				Orb = Spawn(Conf.LoadedOrbs[type].LoadedClass,,, M.Location);
+				if ( Orb != None )
+				{
+					Orb.SetPhysics(PHYS_Falling);
+					Orb.Velocity = M.Velocity + Vect(0,0,250) + 100*VRand();
+					Orb.Acceleration.Z = 5;
+					Orb.SetParameters(Conf.OrbGroups[grp].Color, Conf.LoadedOrbs[type].Value, Conf.LoadedOrbs[type].Extras);
+					Orb.InitialOwner = Killer.PlayerReplicationInfo;
+				}
+			}
+		}
+	}
+}
+
+function int PickOrbGroup(ToxikkMonster M)
+{
+	local int i;
+
+	for ( i=Conf.OrbGroups.Length-1; i>=0; i-- )
+	{
+		if ( Conf.OrbGroups[i].Count > 0 && M.HealthMax >= Conf.OrbGroups[i].MinHP && FRand() <= Conf.OrbGroups[i].Chance )
+			return i;
+	}
+	return -1;	// should not happen as long as first group has 100% chance
+}
+
+function int PickOrb(int grp)
+{
+	local int rng, i;
+
+	rng = Rand(Conf.OrbGroups[grp].Count);
+	for ( i=0; i<Conf.LoadedOrbs.Length; i++ ) {
+		if ( Conf.LoadedOrbs[i].Group == grp ) {
+			rng -= 1;
+			if ( rng < 0 )
+				return i;
+		}
+	}
+	return -1;	// cannot happen
 }
 
 function ScoreKill(Controller Killer, Controller Other)
 {
-	//TODO: see if there's anything to do here
+	// Score is damage-based
 }
 
 function PlayerIsOut(Controller OutPlayer, optional Controller Killer=None)

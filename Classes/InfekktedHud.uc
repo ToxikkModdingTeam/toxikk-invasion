@@ -220,4 +220,6 @@ defaultproperties
 	RadarBossTex=Texture2D'UDKHUD.skull'
 	RadarBossColor=(R=255,G=0,B=0,A=255)
 	RadarBossSize=40
+
+	ScoreBoardClass=class'InfekktedScoreboard'
 }

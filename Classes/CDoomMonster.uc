@@ -90,7 +90,7 @@ simulated function DoBullet()
 	local Pawn PunchVictim;
 	local vector HL, HN, TraceEnd;
 	// Where the vector starts
-	local vector IL, PVV;
+	local vector PVV;
 	local rotator PVR, SpreadRot;
 	local Vector TE;
 	

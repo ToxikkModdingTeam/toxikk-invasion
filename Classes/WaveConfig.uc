@@ -31,7 +31,7 @@ Struct sMonsterDef
 	var String Extras;
 
 	/** Loaded class */
-	var class<Pawn> LoadedClass;
+	var class<ToxikkMonster> LoadedClass;
 
 	structdefaultproperties
 	{
@@ -122,11 +122,11 @@ static function WaveConfig LoadWave(String WaveName, optional bool bCreateNew=fa
 function LoadMonsters()
 {
 	local int i;
-	local class<Pawn> MonsterClass;
+	local class<ToxikkMonster> MonsterClass;
 
 	for ( i=0; i<Monsters.Length; i++ )
 	{
-		MonsterClass = class<Pawn>(DynamicLoadObject(Monsters[i].Class, class'Class', true));
+		MonsterClass = class<ToxikkMonster>(DynamicLoadObject(Monsters[i].Class, class'Class', true));
 		if ( MonsterClass != None )
 		{
 			LoadedMonsters.AddItem(Monsters[i]);
@@ -138,7 +138,7 @@ function LoadMonsters()
 
 	if ( Boss.Class != "" )
 	{
-		Boss.LoadedClass = class<Pawn>(DynamicLoadObject(Boss.Class, class'Class', true));
+		Boss.LoadedClass = class<ToxikkMonster>(DynamicLoadObject(Boss.Class, class'Class', true));
 		if ( Boss.LoadedClass == None )
 			`Log("[WaveConfig:" $ Name $ "] Failed to load class '" $ Boss.Class $ "' - skipping boss");
 	}

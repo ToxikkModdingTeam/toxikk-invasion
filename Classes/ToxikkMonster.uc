@@ -394,6 +394,33 @@ simulated function PostBeginPlay()
 	}
 }
 
+// Called by gamemode right after spawn (first)
+function SetMonsterIsBoss()
+{
+	bIsBossMonster = true;
+	bForceInitialTarget = true;
+	bAlwaysRelevant = true;
+}
+
+// Adjusters - called by gamemode right after spawn (second)
+function SetParameters(float Scale, int HP, float Speed, float Melee, float Range, String Extras)
+{
+	SetDrawScale(Scale);
+	HealthMax = HP; // acts as an "initial hp" constant
+	Health = HP;
+	GroundSpeed *= Speed;
+	PunchDamage *= Melee;
+	LungeDamage *= Range;
+	ProjDamageMult = Range;
+}
+
+// For mapped and manually spawned monsters - give them a controller automatically
+simulated function CheckController()
+{
+	if (Controller == None)
+		SpawnDefaultController();
+}
+
 // Play idle / chatter sounds
 simulated function DoChatter()
 {
@@ -404,25 +431,14 @@ simulated function DoChatter()
 	{
 		// If we're in combat then play combatchatter
 		if (Pawn(ToxikkMonsterController(Controller).Target) != None)
-			PlaySound(ChatterSound,TRUE);
+		{
+			if ( ChatterSound != None )
+				PlaySound(ChatterSound,TRUE);
+		}
 		// Else, play idle
-		else
+		else if ( IdleSound != None )
 			PlaySound(IdleSound,TRUE);
 	}
-}
-
-simulated function CheckController()
-{
-	if (Controller == None)
-		SpawnDefaultController();
-}
-
-// Called by gamemode right after spawn
-function SetMonsterIsBoss()
-{
-	bIsBossMonster = true;
-	bForceInitialTarget = true;
-	bAlwaysRelevant = true;
 }
 
 // Anim tree is initialized
