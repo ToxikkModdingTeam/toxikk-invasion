@@ -466,35 +466,70 @@ simulated function bool Died(Controller Killer, class<DamageType> DamageType, ve
 {
   if (Super.Died(Killer, DamageType, HitLocation))
   {
-	PlaySound(DeathSound, TRUE);
-	SetPawnRBChannels(true);
-    Mesh.MinDistFactorForKinematicUpdate = 0.f;
-    Mesh.ForceSkelUpdate();
-    Mesh.SetTickGroup(TG_PostAsyncWork);
-	
-	PreRagdollCollisionComponent = CollisionComponent;
-    CollisionComponent = Mesh;
-	
-    CylinderComponent.SetActorCollision(false, false);
-    Mesh.SetActorCollision(true, false);
-    Mesh.SetTraceBlocking(true, true);
-    SetPhysics(PHYS_RigidBody);
-    Mesh.PhysicsWeight = 1.0;
+	if (WorldInfo.NetMode == NM_DedicatedServer)
+		ClientDied();
+	else
+	{
+		PlaySound(DeathSound, TRUE);
+		SetPawnRBChannels(true);
+		Mesh.MinDistFactorForKinematicUpdate = 0.f;
+		Mesh.ForceSkelUpdate();
+		Mesh.SetTickGroup(TG_PostAsyncWork);
+		
+		PreRagdollCollisionComponent = CollisionComponent;
+		CollisionComponent = Mesh;
+		
+		CylinderComponent.SetActorCollision(false, false);
+		Mesh.SetActorCollision(true, false);
+		Mesh.SetTraceBlocking(true, true);
+		SetPhysics(PHYS_RigidBody);
+		Mesh.PhysicsWeight = 1.0;
 
-    if (Mesh.bNotUpdatingKinematicDueToDistance)
-    {
-      Mesh.UpdateRBBonesFromSpaceBases(true, true);
-    }
+		if (Mesh.bNotUpdatingKinematicDueToDistance)
+		{
+		  Mesh.UpdateRBBonesFromSpaceBases(true, true);
+		}
 
-    Mesh.PhysicsAssetInstance.SetAllBodiesFixed(false);
-    Mesh.bUpdateKinematicBonesFromAnimation = false;
-    Mesh.SetRBLinearVelocity(Velocity, false);
-    Mesh.ScriptRigidBodyCollisionThreshold = MaxFallSpeed;
-    Mesh.SetNotifyRigidBodyCollision(true);
-    Mesh.WakeRigidBody();
+		Mesh.PhysicsAssetInstance.SetAllBodiesFixed(false);
+		Mesh.bUpdateKinematicBonesFromAnimation = false;
+		Mesh.SetRBLinearVelocity(Velocity, false);
+		Mesh.ScriptRigidBodyCollisionThreshold = MaxFallSpeed;
+		Mesh.SetNotifyRigidBodyCollision(true);
+		Mesh.WakeRigidBody();
+	}
 
     return true;
   }
+}
+
+reliable client function ClientDied()
+{
+	PlaySound(DeathSound, TRUE);
+	SetPawnRBChannels(true);
+	Mesh.MinDistFactorForKinematicUpdate = 0.f;
+	Mesh.ForceSkelUpdate();
+	Mesh.SetTickGroup(TG_PostAsyncWork);
+		
+	PreRagdollCollisionComponent = CollisionComponent;
+	CollisionComponent = Mesh;
+		
+	CylinderComponent.SetActorCollision(false, false);
+	Mesh.SetActorCollision(true, false);
+	Mesh.SetTraceBlocking(true, true);
+	SetPhysics(PHYS_RigidBody);
+	Mesh.PhysicsWeight = 1.0;
+
+	if (Mesh.bNotUpdatingKinematicDueToDistance)
+	{
+		 Mesh.UpdateRBBonesFromSpaceBases(true, true);
+	}
+
+	Mesh.PhysicsAssetInstance.SetAllBodiesFixed(false);
+	Mesh.bUpdateKinematicBonesFromAnimation = false;
+	Mesh.SetRBLinearVelocity(Velocity, false);
+	Mesh.ScriptRigidBodyCollisionThreshold = MaxFallSpeed;
+	Mesh.SetNotifyRigidBodyCollision(true);
+	Mesh.WakeRigidBody();
 }
 
 // Copied from UTPawn, for ragdolls
@@ -521,10 +556,13 @@ simulated function SetPawnRBChannels(bool bRagdollMode)
 }
 
 // Play a single-shot forced anim with optional sound
+// Should be done on both client and server
 simulated function PlayForcedAnim(name A, optional SoundCue Snd)
 {
 	local int l;
 	local bool bUseRoot;
+	
+	ClientPlayForcedAnim(A, Snd);
 	
 	if (CustomAnimator == None || Health <= 0)
 		return;
@@ -547,6 +585,15 @@ simulated function PlayForcedAnim(name A, optional SoundCue Snd)
 		
 	if (Snd != None)
 		PlaySound(Snd, TRUE);
+		
+	CustomAnimator.PlayCustomAnim(A,1.0);
+}
+
+// Unreliable possibly
+reliable client function PlayForcedAnim(name A, optional SoundCue Snd)
+{
+	if (CustomAnimator == None || Health <= 0)
+		return;
 		
 	CustomAnimator.PlayCustomAnim(A,1.0);
 }
