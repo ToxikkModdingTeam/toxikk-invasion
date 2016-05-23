@@ -27,13 +27,13 @@ static function string GetCRZString(optional int Switch, optional PlayerControll
 			return "";  // string sent directly to HUD
 
 		case 1:
-			return class'CRZHudWrapper'.static.GetHTMLPlayerNameFromPRI(RelatedPRI_1, true) $ " IS OUT!";
+			return class'CRZHud'.static.GetHTMLPlayerNameFromPRI(RelatedPRI_1, true) $ " IS OUT!";
 
 		case 2:
 			if ( P != None && P.PlayerReplicationInfo == RelatedPRI_1 )
 				return "<font color='#FF0000'>LAST SURVIVOR!</font>";
 			else
-				return class'CRZHudWrapper'.static.GetHTMLPlayerNameFromPRI(RelatedPRI_1, true) $ " IS THE LAST SURVIVOR!";
+				return class'CRZHud'.static.GetHTMLPlayerNameFromPRI(RelatedPRI_1, true) $ " IS THE LAST SURVIVOR!";
 
 		case 3:
 			return "END OF WAVE!";

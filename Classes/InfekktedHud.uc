@@ -5,7 +5,7 @@
 // ----------------
 // by Chatouille
 //================================================================
-class InfekktedHud extends CRZHudWrapper;
+class InfekktedHud extends CRZHud;
 
 //======== Radar display config ========
 var float RadarSize;

@@ -68,12 +68,12 @@ simulated event ReplicatedEvent(Name VarName)
 			WaveName = Mid(WaveName, 1);
 
 		PC = GetALocalPlayerController();
-		if ( PC != None && CRZHudWrapper(PC.myHUD) != None )
+		if ( PC != None && CRZHud(PC.myHUD) != None )
 		{
 			if ( WaveName != "" )
-				CRZHudWrapper(PC.myHUD).LocalizedCRZMessage(class'InfekktedMessage', None, None, "Wave " $ (CurrentWave+1) $ ": " $ WaveName, 0);
+				CRZHud(PC.myHUD).LocalizedCRZMessage(class'InfekktedMessage', None, None, "Wave " $ (CurrentWave+1) $ ": " $ WaveName, 0);
 			else
-				CRZHudWrapper(PC.myHUD).LocalizedCRZMessage(class'InfekktedMessage', None, None, "Wave " $ (CurrentWave+1), 0);
+				CRZHud(PC.myHUD).LocalizedCRZMessage(class'InfekktedMessage', None, None, "Wave " $ (CurrentWave+1), 0);
 		}
 	}
 }

@@ -240,7 +240,7 @@ function InitializeRow(out sb_Row PRow)
 {
 	UpdateField(PRow, "FROM", "---");
 	UpdateField(PRow, "LVL", "--");
-	UpdateField(PRow, "SCORE", class'CRZHudWrapper'.static.FormatHTMLHexColor("000", class'CRZHudWrapper'.default.UIWhiteHtmlHexColor));
+	UpdateField(PRow, "SCORE", class'CRZHud'.static.FormatHTMLHexColor("000", class'CRZHud'.default.UIWhiteHtmlHexColor));
 	PRow.Background.SetVisible(false);
 }
 
@@ -258,7 +258,7 @@ function UpdateRow(out sb_Row PRow, CRZPlayerReplicationInfo PRI)
 	else
 		PRow.Background.SetVisible(false);
 
-	UpdateField(PRow, "POS", PRI.bOnlySpectator ? "SPC" : class'CRZHudWrapper'.static.FormatInteger(PRI.ScoreboardRank,2) );
+	UpdateField(PRow, "POS", PRI.bOnlySpectator ? "SPC" : class'CRZHud'.static.FormatInteger(PRI.ScoreboardRank,2) );
 
 	UpdateField(PRow, "ID", Left(PRI.PlayerName,9));
 
@@ -266,17 +266,17 @@ function UpdateRow(out sb_Row PRow, CRZPlayerReplicationInfo PRI)
 
 	UpdateField(PRow, "CLAN", PRI.ClanTag == "" ? "---" : Caps(Left(PRI.ClanTag,3)) );
 
-	UpdateField(PRow, "LVL", class'CRZHudWrapper'.static.FormatInteger(int(PRI.SkillClass), 2));
+	UpdateField(PRow, "LVL", class'CRZHud'.static.FormatInteger(int(PRI.SkillClass), 2));
 
-	UpdateField(PRow, "SCORE", class'CRZHudWrapper'.static.FormatHTMLHexColor( PRI.bOnlySpectator ? "---" : class'CRZHudWrapper'.static.FormatInteger(int(PRI.Score)) , class'CRZHudWrapper'.default.UIWhiteHtmlHexColor));
+	UpdateField(PRow, "SCORE", class'CRZHud'.static.FormatHTMLHexColor( PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(int(PRI.Score)) , class'CRZHud'.default.UIWhiteHtmlHexColor));
 
-	UpdateField(PRow, "DEATH", PRI.bOnlySpectator ? "---" : class'CRZHudWrapper'.static.FormatInteger(PRI.Deaths));
+	UpdateField(PRow, "DEATH", PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(PRI.Deaths));
 
-	UpdateField(PRow, "MXP", PRI.bOnlySpectator ? "---" : class'CRZHudWrapper'.static.FormatInteger(PRI.LXP+PRI.MXP));
+	UpdateField(PRow, "MXP", PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(PRI.LXP+PRI.MXP));
 
-	UpdateField(PRow, "TIME", class'CRZHudWrapper'.static.FormatTime(FMax(0,CRZGameReplicationInfo(PRI.WorldInfo.GRI).GetElapsedTime() - PRI.StartTime)) );
+	UpdateField(PRow, "TIME", class'CRZHud'.static.FormatTime(FMax(0,CRZGameReplicationInfo(PRI.WorldInfo.GRI).GetElapsedTime() - PRI.StartTime)) );
 
-	UpdateField(PRow, "PING", class'CRZHudWrapper'.static.FormatPingHexColor(PRI.GetPing()*1000, true));
+	UpdateField(PRow, "PING", class'CRZHud'.static.FormatPingHexColor(PRI.GetPing()*1000, true));
 }
 
 /** Updates flash TF if required - returns true only if the value actually changed */

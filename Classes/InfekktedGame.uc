@@ -892,7 +892,7 @@ function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, cla
 	Super.Killed(Killer, KilledPlayer, KilledPawn, damageType);
 
 	M = ToxikkMonster(KilledPawn);
-	if ( M != None && Killer != None && Killer.PlayerReplicationInfo != None )
+	if ( M != None )
 	{
 		// Spawn orbs
 		for ( i=0; i<Conf.OrbDropRates.Length; i++ )
@@ -912,11 +912,10 @@ function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, cla
 				Orb = Spawn(Conf.LoadedOrbs[type].LoadedClass,,, M.Location);
 				if ( Orb != None )
 				{
-					Orb.SetPhysics(PHYS_Falling);
 					Orb.Velocity = M.Velocity + Vect(0,0,250) + 100*VRand();
-					Orb.Acceleration.Z = 5;
 					Orb.SetParameters(Conf.OrbGroups[grp].Color, Conf.LoadedOrbs[type].Value, Conf.LoadedOrbs[type].Extras);
-					Orb.InitialOwner = Killer.PlayerReplicationInfo;
+					if ( Killer != None )
+						Orb.InitialOwner = Killer.Pawn;
 				}
 			}
 		}
