@@ -200,6 +200,9 @@ Begin:
 						break;
 					}
 					Sleep(0.1);
+					// after a Sleep, InitialOwner may have become None...
+					if ( InitialOwner == None )
+						GoTo 'DiscardInitialOwner';
 				}
 				if ( TravelTarget == None )
 				{
@@ -212,10 +215,15 @@ Begin:
 							break;
 						}
 						Sleep(0.1);
+						// same
+						if ( InitialOwner == None )
+							GoTo 'DiscardInitialOwner';
 					}
 				}
 			}
 		}
+
+DiscardInitialOwner:
 
 		while ( TravelTarget == None )
 		{

@@ -914,7 +914,7 @@ function Killed(Controller Killer, Controller KilledPlayer, Pawn KilledPawn, cla
 				{
 					Orb.Velocity = M.Velocity + Vect(0,0,250) + 100*VRand();
 					Orb.SetParameters(Conf.OrbGroups[grp].Color, Conf.LoadedOrbs[type].Value, Conf.LoadedOrbs[type].Extras);
-					if ( Killer != None )
+					if ( Killer != None && CRZPawn(Killer.Pawn) != None )
 						Orb.InitialOwner = Killer.Pawn;
 				}
 			}

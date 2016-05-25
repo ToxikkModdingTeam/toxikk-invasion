@@ -1,6 +1,6 @@
 //--TOXIKK INVASION MONSTER
 //------------------------------------------------------------------
-Class ToxikkMonster extends Pawn;
+Class ToxikkMonster extends UDKPawn;
 
 var()			LightEnvironmentComponent		LEC;
 var()			SkeletalMeshComponent			FakeComponent;
@@ -75,6 +75,7 @@ var()			float							CrawlChance;
 
 var()			float							ChatterTime;
 
+//=============================================================================
 //--BOSS CAMERA----------------------------------------------------------------
 // bIsBossMonster: Uses the boss camera when spawning, also starts next wave
 // Attachee: Camera position during sight
@@ -114,6 +115,40 @@ var()			int								ShakeDamage;
 var()			float							ShakeDistance;
 
 //=============================================================================
+//--DYING, RAGDOLL, GIBS-------------------------------------------------------
+
+/** Time at which this pawn entered the dying state */
+var float DeathTime;
+
+/** Set when pawn died on listen server, but was hidden rather than ragdolling (for replication purposes) */
+var bool bHideOnListenServer;
+/** Max duration of ragdoll */
+var float RagdollLifespan;
+
+/** whether or not we have been gibbed already */
+var bool bGibbed;
+/** Replicated when torn off body should gib */
+//var bool bTearOffGibs;
+/** Track damage accumulated during a tick - used for gibbing determination */
+var float AccumulateDamage;
+/** Tick time for which damage is being accumulated */
+var float AccumulationTime;
+
+/** Gib sounds */
+var SoundCue GibSound;
+var SoundCue CrushedSound;
+
+/** Blood stuff - from UTFamilyInfo */
+var MaterialInstance BloodSplatterDecalMaterial;
+var array<DistanceBasedParticleTemplate> BloodEffects;
+var class<UTEmit_HitEffect> BloodEmitterClass;
+
+/** Gibs - from UTFamilyInfo */
+var array<GibInfo> Gibs;
+var ParticleSystem GibExplosionTemplate;
+
+
+//=============================================================================
 
 replication
 {
@@ -122,12 +157,6 @@ replication
 
 	if (bNetDirty || bNetInitial)
 		bIsCrawling;
-}
-
-// Don't take damage when we're dead, keeps the ragdoll from freezing mid-air
-state Dying
-{
-	event TakeDamage(int Damage, Controller EventInstigator, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser);
 }
 
 // Decide whether or not we're crawling (imps / vulgars)
@@ -461,78 +490,278 @@ simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
 	}
 }
 
-// TURN THE MONSTER INTO A RAGDOLL
-simulated function bool Died(Controller Killer, class<DamageType> DamageType, vector HitLocation)
+
+//================================================
+// Dying, Ragdoll
+//================================================
+
+/** Standard way to play dying sound */
+function PlayDyingSound()
 {
-  if (Super.Died(Killer, DamageType, HitLocation))
-  {
-	if (WorldInfo.NetMode == NM_DedicatedServer)
-		ClientDied();
+	PlaySound(DeathSound);    //FROM UTPawnSoundGroup
+}
+
+/** Responsible for playing any death effects, animations, etc. */
+//SMARTCOPY UTPawn
+simulated function PlayDying(class<DamageType> DamageType, vector HitLoc)
+{
+	local vector ApplyImpulse, ShotDir;
+	local TraceHitInfo HitInfo;
+	local class<UTDamageType> UTDamageType;
+
+	bCanTeleport = false;
+	bReplicateMovement = false;
+	bTearOff = true;
+	bPlayedDeath = true;
+
+	HitDamageType = DamageType; // these are replicated to other clients
+	TakeHitLocation = HitLoc;
+
+	if ( WorldInfo.NetMode == NM_DedicatedServer )
+	{
+ 		UTDamageType = class<UTDamageType>(DamageType);
+		// tell clients whether to gib
+		bTearOffGibs = (UTDamageType != None && ShouldGib(UTDamageType));
+		bGibbed = bGibbed || bTearOffGibs;
+		GotoState('Dying');
+		return;
+	}
+
+	if ( WorldInfo.TimeSeconds - LastRenderTime > 2 )
+	{
+		if (WorldInfo.NetMode == NM_ListenServer || WorldInfo.IsRecordingDemo())
+		{
+			if (WorldInfo.Game.NumPlayers + WorldInfo.Game.NumSpectators < 2 && !WorldInfo.IsRecordingDemo())
+			{
+				Destroy();
+				return;
+			}
+			bHideOnListenServer = true;
+
+			// check if should gib (for clients)
+			UTDamageType = class<UTDamageType>(DamageType);
+			if (UTDamageType != None && ShouldGib(UTDamageType))
+			{
+				bTearOffGibs = true;
+				bGibbed = true;
+			}
+			TurnOffPawn();
+			return;
+		}
+		else
+		{
+			// if we were not just controlling this pawn,
+			// and it has not been rendered in 2 seconds, just destroy it.
+			Destroy();
+			return;
+		}
+	}
+
+	UTDamageType = class<UTDamageType>(DamageType);
+	if (UTDamageType != None && !class'UTGame'.static.UseLowGore(WorldInfo) && ShouldGib(UTDamageType))
+	{
+		SpawnGibs(UTDamageType, HitLoc);
+	}
 	else
 	{
-		PlaySound(DeathSound, TRUE);
-		SetPawnRBChannels(true);
-		Mesh.MinDistFactorForKinematicUpdate = 0.f;
-		Mesh.ForceSkelUpdate();
-		Mesh.SetTickGroup(TG_PostAsyncWork);
-		
-		PreRagdollCollisionComponent = CollisionComponent;
-		CollisionComponent = Mesh;
-		
-		CylinderComponent.SetActorCollision(false, false);
-		Mesh.SetActorCollision(true, false);
-		Mesh.SetTraceBlocking(true, true);
-		SetPhysics(PHYS_RigidBody);
-		Mesh.PhysicsWeight = 1.0;
+		CheckHitInfo( HitInfo, Mesh, Normal(TearOffMomentum), TakeHitLocation );
 
-		if (Mesh.bNotUpdatingKinematicDueToDistance)
+		bBlendOutTakeHitPhysics = false;
+
+		// Turn off hand IK when dead.
+		//TODO: Check what this is useful for ??
+		//SetHandIKEnabled(false);
+
+		// if we had some other rigid body thing going on, cancel it
+		if (Physics == PHYS_RigidBody)
 		{
-		  Mesh.UpdateRBBonesFromSpaceBases(true, true);
+			//@note: Falling instead of None so Velocity/Acceleration don't get cleared
+			setPhysics(PHYS_Falling);
 		}
 
-		Mesh.PhysicsAssetInstance.SetAllBodiesFixed(false);
-		Mesh.bUpdateKinematicBonesFromAnimation = false;
-		Mesh.SetRBLinearVelocity(Velocity, false);
-		Mesh.ScriptRigidBodyCollisionThreshold = MaxFallSpeed;
-		Mesh.SetNotifyRigidBodyCollision(true);
-		Mesh.WakeRigidBody();
-	}
+		PreRagdollCollisionComponent = CollisionComponent;
+		CollisionComponent = Mesh;
 
-    return true;
-  }
+		Mesh.MinDistFactorForKinematicUpdate = 0.f;
+
+		// If we had stopped updating kinematic bodies on this character due to distance from camera, force an update of bones now.
+		if( Mesh.bNotUpdatingKinematicDueToDistance )
+		{
+			Mesh.ForceSkelUpdate();
+			Mesh.UpdateRBBonesFromSpaceBases(TRUE, TRUE);
+		}
+
+		Mesh.PhysicsWeight = 1.0;
+
+		SetPhysics(PHYS_RigidBody);
+		Mesh.PhysicsAssetInstance.SetAllBodiesFixed(FALSE);
+		SetPawnRBChannels(TRUE);
+
+		if( TearOffMomentum != vect(0,0,0) )
+		{
+			ShotDir = normal(TearOffMomentum);
+			ApplyImpulse = ShotDir * DamageType.default.KDamageImpulse;
+
+			// If not moving downwards - give extra upward kick
+			if ( Velocity.Z > -10 )
+			{
+				ApplyImpulse += Vect(0,0,1)*DamageType.default.KDeathUpKick;
+			}
+			Mesh.AddImpulse(ApplyImpulse, TakeHitLocation, HitInfo.BoneName, true);
+		}
+
+		GotoState('Dying');
+	}
 }
 
-reliable client function ClientDied()
+/** Whether or not we should gib due to damage from the passed in damagetype */
+//SMARTCOPY UTPawn
+simulated function bool ShouldGib(class<UTDamageType> D)
 {
-	PlaySound(DeathSound, TRUE);
-	SetPawnRBChannels(true);
-	Mesh.MinDistFactorForKinematicUpdate = 0.f;
-	Mesh.ForceSkelUpdate();
-	Mesh.SetTickGroup(TG_PostAsyncWork);
-		
-	PreRagdollCollisionComponent = CollisionComponent;
-	CollisionComponent = Mesh;
-		
-	CylinderComponent.SetActorCollision(false, false);
-	Mesh.SetActorCollision(true, false);
-	Mesh.SetTraceBlocking(true, true);
-	SetPhysics(PHYS_RigidBody);
-	Mesh.PhysicsWeight = 1.0;
-
-	if (Mesh.bNotUpdatingKinematicDueToDistance)
-	{
-		 Mesh.UpdateRBBonesFromSpaceBases(true, true);
-	}
-
-	Mesh.PhysicsAssetInstance.SetAllBodiesFixed(false);
-	Mesh.bUpdateKinematicBonesFromAnimation = false;
-	Mesh.SetRBLinearVelocity(Velocity, false);
-	Mesh.ScriptRigidBodyCollisionThreshold = MaxFallSpeed;
-	Mesh.SetNotifyRigidBodyCollision(true);
-	Mesh.WakeRigidBody();
+	return (Mesh != None 
+		&& (bTearOffGibs 
+			// rework UTDamageType.static.ShouldGib(UTPawn P) because we don't have a UTPawn...
+			|| ( !D.default.bNeverGibs && (D.default.bAlwaysGibs || (AccumulateDamage > D.default.AlwaysGibDamageThreshold) || ((Health < D.default.GibThreshold) && (AccumulateDamage > D.default.MinAccumulateDamageThreshold))) )
+			)
+		);
 }
 
-// Copied from UTPawn, for ragdolls
+//COPY UTPawn
+simulated function TurnOffPawn()
+{
+	// hide everything, turn off collision
+	if (Physics == PHYS_RigidBody)
+	{
+		Mesh.SetHasPhysicsAssetInstance(FALSE);
+		Mesh.PhysicsWeight = 0.f;
+		SetPhysics(PHYS_None);
+	}
+	if (!IsInState('Dying')) // so we don't restart Begin label and possibly play dying sound again
+	{
+		GotoState('Dying');
+	}
+	SetPhysics(PHYS_None);
+	SetCollision(false, false);
+	//@warning: can't set bHidden - that will make us lose net relevancy to everyone
+	Mesh.SetHidden(true);
+}
+
+/** spawns gibs and hides the pawn's mesh */
+//SMARTCOPY UTPawn
+simulated function SpawnGibs(class<UTDamageType> UTDamageType, vector HitLocation)
+{
+	local int i;
+	local bool bSpawnHighDetail;
+	local GibInfo MyGibInfo;
+
+	// make sure client gibs me too
+	bTearOffGibs = true;
+
+	if ( !bGibbed )
+	{
+		if ( WorldInfo.NetMode == NM_DedicatedServer )
+		{
+			bGibbed = true;
+			return;
+		}
+
+		// play sound
+		if(WorldInfo.TimeSeconds - DeathTime < 0.35) // had to have just died to do a death scream.
+		{
+			PlaySound(GibSound, true);    //FROM UTPawnSoundGroup
+		}
+		// the body sounds can go off any time
+		PlaySound(CrushedSound,false,true);   //FROM UTPawnSoundGroup
+
+		// gib particles
+		if (GibExplosionTemplate != None && EffectIsRelevant(Location, false, 7000))
+		{
+			WorldInfo.MyEmitterPool.SpawnEmitter(GibExplosionTemplate, Location, Rotation);
+			// spawn all other gibs
+			bSpawnHighDetail = !WorldInfo.bDropDetail && (Worldinfo.TimeSeconds - LastRenderTime < 1);
+			for (i = 0; i < Gibs.length; i++)
+			{
+				MyGibInfo = Gibs[i];
+
+				if ( bSpawnHighDetail || !MyGibInfo.bHighDetailOnly )
+				{
+					SpawnGib(MyGibInfo.GibClass, MyGibInfo.BoneName, UTDamageType, HitLocation, true);
+				}
+			}
+		}
+
+		// if standalone or client, destroy here
+		if ( WorldInfo.NetMode != NM_DedicatedServer && !WorldInfo.IsRecordingDemo() &&
+			((WorldInfo.NetMode != NM_ListenServer) || (WorldInfo.Game.NumPlayers + WorldInfo.Game.NumSpectators < 2)) )
+		{
+			Destroy();
+		}
+		else
+		{
+			TurnOffPawn();
+		}
+
+		bGibbed = true;
+	}
+}
+
+//SMARTCOPY UTPawn
+simulated function UTGib SpawnGib(class<UTGib> GibClass, name BoneName, class<UTDamageType> UTDamageType, vector HitLocation, bool bSpinGib)
+{
+	local UTGib Gib;
+	local rotator SpawnRot;
+	local int SavedPitch;
+	local float GibPerterbation;
+	local rotator VelRotation;
+	local vector X, Y, Z;
+
+	SpawnRot = QuatToRotator(Mesh.GetBoneQuaternion(BoneName));
+
+	// @todo fixmesteve temp workaround for gib orientation problem
+	SavedPitch = SpawnRot.Pitch;
+	SpawnRot.Pitch = SpawnRot.Yaw;
+	SpawnRot.Yaw = SavedPitch;
+	Gib = Spawn(GibClass, self,, Mesh.GetBoneLocation(BoneName), SpawnRot);
+
+	if ( Gib != None )
+	{
+		// add initial impulse
+		GibPerterbation = UTDamageType.default.GibPerterbation * 32768.0;
+		VelRotation = rotator(Gib.Location - HitLocation);
+		VelRotation.Pitch += (FRand() * 2.0 * GibPerterbation) - GibPerterbation;
+		VelRotation.Yaw += (FRand() * 2.0 * GibPerterbation) - GibPerterbation;
+		VelRotation.Roll += (FRand() * 2.0 * GibPerterbation) - GibPerterbation;
+		GetAxes(VelRotation, X, Y, Z);
+
+		if (Gib.bUseUnrealPhysics)
+		{
+			Gib.Velocity = Velocity + Z * (FRand() * 400.0 + 400.0);
+			Gib.SetPhysics(PHYS_Falling);
+			Gib.RotationRate.Yaw = Rand(100000);
+			Gib.RotationRate.Pitch = Rand(100000);
+			Gib.RotationRate.Roll = Rand(100000);
+		}
+		else
+		{
+			Gib.Velocity = Velocity + Z * (FRand() * 50.0);
+			Gib.GibMeshComp.WakeRigidBody();
+			Gib.GibMeshComp.SetRBLinearVelocity(Gib.Velocity, false);
+			if ( bSpinGib )
+			{
+				Gib.GibMeshComp.SetRBAngularVelocity(VRand() * 50, false);
+			}
+		}
+
+		// let damagetype spawn any additional effects
+		UTDamageType.static.SpawnGibEffects(Gib);
+		Gib.LifeSpan = Gib.LifeSpan + (2.0 * FRand());
+	}
+
+	return Gib;
+}
+
+/** For ragdolls */
+//COPY UTPawn
 simulated function SetPawnRBChannels(bool bRagdollMode)
 {
 	if(bRagdollMode)
@@ -554,6 +783,192 @@ simulated function SetPawnRBChannels(bool bRagdollMode)
 		Mesh.SetRBCollidesWithChannel(RBCC_BlockingVolume,FALSE);
 	}
 }
+
+/** State Dying */
+//SMARTCOPY UTPawn
+simulated State Dying
+{
+ignores OnAnimEnd, Bump, HitWall, HeadVolumeChange, PhysicsVolumeChange, Falling, BreathTimer, FellOutOfWorld;
+
+	simulated function BeginState(Name Prev)
+	{
+		Super.BeginState(Prev);
+
+		DeathTime = WorldInfo.TimeSeconds;
+		CustomGravityScaling = 1.0;
+
+		CylinderComponent.SetActorCollision(false, false);
+
+		if ( bTearOff && (bHideOnListenServer || (WorldInfo.NetMode == NM_DedicatedServer)) )
+			LifeSpan = 1.0;
+		else
+		{
+			if ( Mesh != None )
+			{
+				Mesh.SetTraceBlocking(true, true);
+				Mesh.SetActorCollision(true, false);
+
+				// Move into post so that we are hitting physics from last frame, rather than animated from this
+				Mesh.SetTickGroup(TG_PostAsyncWork);
+			}
+			SetTimer(1.0, false);
+			LifeSpan = RagDollLifeSpan;
+		}
+	}
+
+	event bool EncroachingOn(Actor Other)
+	{
+		// don't abort moves in ragdoll
+		return false;
+	}
+
+	event Timer()
+	{
+		local PlayerController PC;
+		local bool bBehindAllPlayers;
+		local vector ViewLocation;
+		local rotator ViewRotation;
+
+		// let the dead bodies stay if the game is over
+		if (WorldInfo.GRI != None && WorldInfo.GRI.bMatchIsOver)
+		{
+			LifeSpan = 0.0;
+			return;
+		}
+
+		if ( !PlayerCanSeeMe() )
+		{
+			Destroy();
+			return;
+		}
+		// go away if not viewtarget
+		//@todo FIXMESTEVE - use drop detail, get rid of backup visibility check
+		bBehindAllPlayers = true;
+		ForEach LocalPlayerControllers(class'PlayerController', PC)
+		{
+			if ( (PC.ViewTarget == self) || (PC.ViewTarget == Base) )
+			{
+				if ( LifeSpan < 3.5 )
+					LifeSpan = 3.5;
+				SetTimer(2.0, false);
+				return;
+			}
+
+			PC.GetPlayerViewPoint( ViewLocation, ViewRotation );
+			if ( ((Location - ViewLocation) dot vector(ViewRotation) > 0) )
+			{
+				bBehindAllPlayers = false;
+				break;
+			}
+		}
+		if ( bBehindAllPlayers )
+		{
+			Destroy();
+			return;
+		}
+		SetTimer(1.0, false);
+	}
+
+	simulated event Landed(vector HitNormal, Actor FloorActor)
+	{
+		local vector BounceDir;
+
+		if( Velocity.Z < -500 )
+		{
+			BounceDir = 0.5 * (Velocity - 2.0*HitNormal*(Velocity dot HitNormal));
+			TakeDamage( (1-Velocity.Z/30), Controller, Location, BounceDir, class'DmgType_Crushed');
+		}
+	}
+
+	simulated event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
+	{
+		local Vector shotDir, ApplyImpulse,BloodMomentum;
+		local class<UTDamageType> UTDamage;
+		local UTEmit_HitEffect HitEffect;
+
+		if ( class'UTGame'.Static.UseLowGore(WorldInfo) )
+		{
+			if ( !bGibbed )
+			{
+				UTDamage = class<UTDamageType>(DamageType);
+				if (UTDamage != None && ShouldGib(UTDamage))
+				{
+					bTearOffGibs = true;
+					bGibbed = true;
+				}
+			}
+			return;
+		}
+
+		if (!bGibbed && (InstigatedBy != None || EffectIsRelevant(Location, true, 0)))
+		{
+			UTDamage = class<UTDamageType>(DamageType);
+
+			// accumulate damage taken in a single tick
+			if ( AccumulationTime != WorldInfo.TimeSeconds )
+			{
+				AccumulateDamage = 0;
+				AccumulationTime = WorldInfo.TimeSeconds;
+			}
+			AccumulateDamage += Damage;
+
+			Health -= Damage;
+			if ( UTDamage != None )
+			{
+				if ( ShouldGib(UTDamage) )
+				{
+					if ( bHideOnListenServer || (WorldInfo.NetMode == NM_DedicatedServer) )
+					{
+						bTearOffGibs = true;
+						bGibbed = true;
+						return;
+					}
+					SpawnGibs(UTDamage, HitLocation);
+				}
+				else if ( !bHideOnListenServer && (WorldInfo.NetMode != NM_DedicatedServer) )
+				{
+					CheckHitInfo( HitInfo, Mesh, Normal(Momentum), HitLocation );
+					UTDamage.Static.SpawnHitEffect(self, Damage, Momentum, HitInfo.BoneName, HitLocation);
+
+					if ( UTDamage.default.bCausesBlood && !class'UTGame'.Static.UseLowGore(WorldInfo)
+						&& ((PlayerController(Controller) == None) || (WorldInfo.NetMode != NM_Standalone)) )
+					{
+						BloodMomentum = Momentum;
+						if ( BloodMomentum.Z > 0 )
+							BloodMomentum.Z *= 0.5;
+						HitEffect = Spawn(BloodEmitterClass,self,, HitLocation, rotator(BloodMomentum));
+						HitEffect.AttachTo(Self,HitInfo.BoneName);
+					}
+
+					if( (Physics != PHYS_RigidBody) || (Momentum == vect(0,0,0)) || (HitInfo.BoneName == '') )
+						return;
+
+					shotDir = Normal(Momentum);
+					ApplyImpulse = (DamageType.Default.KDamageImpulse * shotDir);
+
+					if( UTDamage.Default.bThrowRagdoll && (Velocity.Z > -10) )
+					{
+						ApplyImpulse += Vect(0,0,1)*DamageType.default.KDeathUpKick;
+					}
+					// AddImpulse() will only wake up the body for the bone we hit, so force the others to wake up
+					Mesh.WakeRigidBody();
+					Mesh.AddImpulse(ApplyImpulse, HitLocation, HitInfo.BoneName, true);
+				}
+			}
+		}
+	}
+
+	/** Tick only if bio death effect */
+	simulated event Tick(FLOAT DeltaSeconds)
+	{
+		Disable('Tick');
+	}
+}
+
+
+//================================================
+// ...
+//================================================
 
 // Play a single-shot forced anim with optional sound
 // Should be done on both client and server
@@ -590,7 +1005,8 @@ simulated function PlayForcedAnim(name A, optional SoundCue Snd)
 }
 
 // Unreliable possibly
-reliable client function PlayForcedAnim(name A, optional SoundCue Snd)
+//FIXME: no RPC in Pawn, need to use a State system probably (mirror the states in MonsterController and play anims on client-side ?)
+reliable client function ClientPlayForcedAnim(name A, optional SoundCue Snd)
 {
 	if (CustomAnimator == None || Health <= 0)
 		return;
@@ -648,7 +1064,7 @@ event Bump(Actor Other, PrimitiveComponent OtherComp, Vector HitNormal)
 // Animnotify, play a footstep sound
 function PlayFootstep()
 {
-	if (Health > 0 && WorldInfo.NetMode != NM_DedicatedServer)
+	if (!IsInState('Dying') && Health > 0 && WorldInfo.NetMode != NM_DedicatedServer)
 	{
 		PlaySound(FootstepSound, TRUE);
 		ScreenShake(ShakeDamage, ShakeDistance);
@@ -735,7 +1151,7 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
 	
 	// lock to attacker
-	if ( InstigatedBy != None && InstigatedBy.Pawn != None )
+	if ( Controller != None && InstigatedBy != None && InstigatedBy.Pawn != None )
 	{
 		ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn);
 		SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
@@ -763,6 +1179,30 @@ DefaultProperties
 	BossYaw=32768
 	ShakeDamage=0
 	ShakeDistance=1500
+
+	RagdollLifespan=5.0
+	GibSound=SoundCue'Snd_Character_Grunts.SoundCues.SFX_Grunt_Male_DeathInstant_Cue'
+	CrushedSound=SoundCue'snd_character_general.Damage_Effects.A_Character_DamageEffect_CrushedCue'
+	//TODO: get some yellow/green blood and gibs...
+	BloodSplatterDecalMaterial=MaterialInstanceTimeVarying'T_FX.DecalMaterials.MITV_FX_OilDecal_Small01'
+	GibExplosionTemplate=ParticleSystem'Gore_Explosion.Particles.P_Gore_Explosion'
+	BloodEffects[0]=(Template=ParticleSystem'Gore_Impact.Particles.P_Gore_Impact_Near',MinDistance=750.0)//ParticleSystem'T_FX.Effects.P_FX_Bloodhit_Corrupt_Far'
+	BloodEffects[1]=(Template=ParticleSystem'Gore_Impact.Particles.P_Gore_Impact_Near',MinDistance=350.0) //ParticleSystem'T_FX.Effects.P_FX_Bloodhit_Corrupt_Mid'
+	BloodEffects[2]=(Template=ParticleSystem'Gore_Impact.Particles.P_Gore_Impact_Near',MinDistance=0.0)
+	BloodEmitterClass=class'UTGame.UTEmit_BloodSpray'
+	Gibs[0]=(BoneName=head, GibClass=class'CRZGib_Bright_Male01_Head', bHighDetailOnly=false)
+	//TODO: define more gibs
+	/*
+	HeadGib=(BoneName=b_Head,			GibClass=class'CRZGib_Bright_Male01_Head',              bHighDetailOnly=true)
+	Gibs[0]=(BoneName=b_LeftArm,		GibClass=class'CRZGib_Bright_Male01_LeftArm',           bHighDetailOnly=false)
+	Gibs[1]=(BoneName=b_RightForeArm,	GibClass=class'CRZGib_Bright_Male01_RightArm_Lower',    bHighDetailOnly=true)
+	Gibs[2]=(BoneName=b_LeftLeg,		GibClass=class'CRZGib_Bright_Male01_LeftLeg_Lower',     bHighDetailOnly=false)
+	Gibs[3]=(BoneName=b_LeftLegUpper,	GibClass=class'CRZGib_Bright_Male01_LeftLeg_Upper',     bHighDetailOnly=true)
+	Gibs[4]=(BoneName=b_RightLeg,		GibClass=class'CRZGib_Bright_Male01_RightLeg_Lower',    bHighDetailOnly=true)
+	Gibs[5]=(BoneName=b_RightLegUpper,	GibClass=class'CRZGib_Bright_Male01_RightLeg_Upper',    bHighDetailOnly=false)
+	Gibs[6]=(BoneName=b_Hips,			GibClass=class'CRZGib_Bright_Male01_Hip',               bHighDetailOnly=true)
+	Gibs[7]=(BoneName=b_Spine,			GibClass=class'CRZGib_Bright_Male01_Torso',             bHighDetailOnly=true)
+	*/
 	
     Begin Object Name=CollisionCylinder
         CollisionHeight=+44.000000

@@ -71,7 +71,7 @@ simulated function UpdateRadar()
 	RadarItems.Length = 0;
 	foreach WorldInfo.AllPawns(class'Pawn', P)
 	{
-		if ( P.Health <= 0 || P == PlayerOwner.Pawn )
+		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn )
 			continue;
 
 		i = RadarItems.Length;
