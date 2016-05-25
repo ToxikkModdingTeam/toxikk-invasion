@@ -178,6 +178,7 @@ State PreWaveCountdown
 
 		// delay stuff a bit for smoothness
 		GRI.bStopCountDown = true;
+		GRI.bPreWaveCountdown = true;
 		SetTimer(3.0, false, 'StartCountdown');
 	}
 
@@ -195,6 +196,7 @@ State PreWaveCountdown
 
 	function TimeUp()
 	{
+		GRI.bPreWaveCountdown = false;
 		GRI.SendNewWaveName(CurrentWave.FriendlyName);
 		GotoState('MatchInProgress');
 	}

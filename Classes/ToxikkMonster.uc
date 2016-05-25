@@ -1180,7 +1180,7 @@ DefaultProperties
 	ShakeDamage=0
 	ShakeDistance=1500
 
-	RagdollLifespan=5.0
+	RagdollLifespan=6
 	GibSound=SoundCue'Snd_Character_Grunts.SoundCues.SFX_Grunt_Male_DeathInstant_Cue'
 	CrushedSound=SoundCue'snd_character_general.Damage_Effects.A_Character_DamageEffect_CrushedCue'
 	//TODO: get some yellow/green blood and gibs...

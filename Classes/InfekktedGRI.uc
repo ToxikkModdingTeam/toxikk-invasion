@@ -16,13 +16,16 @@ var byte CurrentWave;
 /** Server Replicated - Name of the new/current wave */
 var RepNotify String WaveName;
 
+/** Server Replicated - Whether we are currently in pre-wave countdown */
+var bool bPreWaveCountdown;
+
 Replication
 {
 	if ( bNetInitial )
 		AvgMapSize;
 
 	if ( bNetInitial || bNetDirty )
-		CurrentWave, WaveName;
+		CurrentWave, WaveName, bPreWaveCountdown;
 }
 
 function SetRemainingTime(int NewTime)
@@ -37,7 +40,53 @@ function SetRemainingTime(int NewTime)
 
 simulated function Timer()
 {
-	Super.Timer();
+	local int TimerMessageIndex;
+	local PlayerController PC;
+
+	//Super.Timer();
+	// Override to send a different message for the "next wave" countdown
+	//COPY CRZGameReplicationInfo
+	if ( (WorldInfo.Game == None && bMatchHasBegun && !bMatchIsOver ) || (WorldInfo.Game!=none && WorldInfo.Game.MatchIsInProgress()) )
+		ElapsedTime++;
+	if ( WorldInfo.NetMode == NM_Client )
+	{
+		if ( RemainingMinute != 0 )
+		{
+			RemainingTime = RemainingMinute;
+			RemainingMinute = 0;
+		}
+	}
+	if ( RemainingTime > 0 && !bStopCountDown )
+	{
+		RemainingTime--;
+		if ( WorldInfo.NetMode != NM_Client && RemainingTime % 60 == 0 )
+			RemainingMinute = RemainingTime;
+	}
+	SetTimer(WorldInfo.TimeDilation, true);
+	if ( WorldInfo.NetMode == NM_Client && bWarmupRound && RemainingTime > 0 )
+		RemainingTime--;
+	if (WorldInfo.NetMode != NM_DedicatedServer && (bMatchHasBegun || bWarmupRound) && !bStopCountDown && !bMatchIsOver && Winner == None)
+	{
+		switch (RemainingTime)
+		{
+			case 300: TimerMessageIndex = 16; break;
+			case 180: TimerMessageIndex = 15; break;
+			case 120: TimerMessageIndex = 14; break;
+			case 60: TimerMessageIndex = 13; break;
+			case 30: TimerMessageIndex = 12; break;
+			//case 20: TimerMessageIndex = 11; break;
+			default:
+				if (RemainingTime <= 10 && RemainingTime > 0)
+					TimerMessageIndex = RemainingTime;
+				break;
+		}
+		if (TimerMessageIndex != 0)
+		{
+			foreach LocalPlayerControllers(class'PlayerController', PC)
+				PC.ReceiveLocalizedMessage(class'InfekktedTimerMessage', TimerMessageIndex,,, Self);
+		}
+	}
+	//ENDCOPY
 
 	if ( Role == ROLE_Authority )
 	{
