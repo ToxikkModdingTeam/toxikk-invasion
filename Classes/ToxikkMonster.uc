@@ -1,82 +1,142 @@
-//--TOXIKK INVASION MONSTER
-//------------------------------------------------------------------
+//================================================================
+// Infekkted.ToxikkMonster
+// ----------------
+// ...
+// ----------------
+// by ZedekThePD & Chatouille
+//================================================================
 Class ToxikkMonster extends UDKPawn;
 
-var()			LightEnvironmentComponent		LEC;
-var()			SkeletalMeshComponent			FakeComponent;
+//NOTE:
+// Rewrote variables declarations to include the intellisense description correctly,
+// and regrouped them by type so they are easier to find in that unreadable mess...
+
+
+var		LightEnvironmentComponent		LEC;
+var		SkeletalMeshComponent			FakeComponent;
+
+
+//=============================================================================
+//--ATTACKING------------------------------------------------------------------
+
+/** Monster can lunge (imp, trite, etc.) */
+var bool bHasLunge;
+/** Monster is currently lunging (mid-air) */
+var bool bIsLunging;
+/** Monster can only lunge while crouched */
+var bool bLungeIfCrouched;
+/** Monster is currently crawling */
+var bool bIsCrawling;
+
+/** How close we have to be to start attacking melee-wise */
+var float AttackDistance;
+/** Distance the monster must be to attack the player with projs */
+var float RangedAttackDistance;
+/** Chance to lunge at the player */
+var float LungeChance;
+/** How close the player has to be to lunge */
+var float LungeDistance;
+/** Chance to start crawling after we're standing and do a ranged attack */
+var float CrawlChance;
+/** Minimum time between ranged attacks before the next can occur */
+var float RangedDelay;
+/** How much force is applied when we lunge toward the player */
+var float LungeSpeed;
+
+/** How much damage melee attacks do */
+var int PunchDamage;
+/** Front check for punch attack (0-180) */
+var int PunchDegrees;
+/** Momentum of the punch attack */
+var int PunchMomentum;
+/** How much damage lunge attack does */
+var int LungeDamage;
+
+
+/** Projectile to spawn for ranged attack */
+var Class<Projectile> MissileClass;
+
+/** Bones / sockets that projectiles / tracers come out of */
+var name TipBone, TipBoneLeft, TipBoneRight;
+
+/** Damage multiplier for projectiles - used by Gamemode adjusters */
+var float ProjDamageMult;
+
 
 //=============================================================================
 //--SOUNDS---------------------------------------------------------------------
-// SightSound: Played when the monster finds a target and it's idling
-// DeathSound: Played when the monster dies
-// FootstepSound: Footstep sounds obviously
-// IdleSound: Periodically played in the idle state
-// ChatterSound: Same as idle, but when the monster has a target
-// PainSound: Called when the monster is hurt
-// AttackSound: Done when the monster melees / shoots
-// FireSound: Done when monster shoots
-//
-// PainSoundChance: FRand() must be greater than this to play pain sounds
 
-var()			SoundCue						SightSound, DeathSound, FootstepSound;
-var()			SoundCue						IdleSound, ChatterSound, PainSound, AttackSound, FireSound;
-var()			float							PainSoundChance;
+/** Played when the monster finds a target and it's idling */
+var SoundCue SightSound;
+/** Played when the monster dies */
+var SoundCue DeathSound;
+/** Footstep sounds obviously */
+var SoundCue FootstepSound;
+/** Periodically played in the idle state */
+var SoundCue IdleSound;
+/** Same as idle, but when the monster has a target */
+var SoundCue ChatterSound;
+/** Called when the monster is hurt */
+var SoundCue PainSound;
+/** Done when the monster melees / shoots */
+var SoundCue AttackSound;
+/** Done when monster shoots */
+var SoundCue FireSound;
+/** FRand() must be greater than this to play pain sounds */
+var float PainSoundChance;
+/** Time (in seconds) between idle / combat chatter noises */
+var float ChatterTime;
 
-//--ANIMATIONS-----------------------------------------------------------------
-// bHasMelee: Monster has a melee attack
-// bHasRanged: Monster has a ranged attack
-// bHasLunge: Monster can lunge (imp, trite, etc.)
-// bWalkingAttack: Monster continues to walk when meleeing
-// bWalkingRanged: Monster continues to walk when doing ranged attack
-// MeleeAttackAnims: Animations to play when attacking
-// RangedAttackAnims: Animations to play when shooting / ranged
-// LungeStartAnim, LungeMidAnim, LungeEndAnim: Lunge animations
-// PainAnims: Anims to play when we get hurt
-// SightAnims: Anims to play when we get a new target
-// RunningAnim: This monster's run anim
-//
-// AttackDistance: How close we have to be to start attacking melee-wise
-// RangedAttackDistance: Distance the monster must be to attack the player with projs
-// PunchDamage: How much damage melee attacks do
-// LungeDistance: How close the player has to be to lunge
-// SightChance: Chance to play sight anim
-// LungeChance: Chance to lunge at the player
-// CrawlChance: Chance to start crawling after we're standing and do a ranged attack
-//
-// TipBone, TipBoneLeft, TipBoneRight: Bones / sockets that projectiles / tracers come out of
-// RangedDelay: Minimum time between ranged attacks before the next can occur
-// LungeSpeed: How much force is applied when we lunge toward the player
-// PreRotateModifier: Amount to speed up our rotation rate when we're prepping ranged attacks
-// ChatterTime: Time (in seconds) between idle / combat chatter noises
-
-// Nodes in the animtree
-var() 			AnimNodePlayCustomAnim 			CustomAnimator, WalkSwitch;
-var()			AnimNodeBlend					CrawlBlender;
-var()			Name							RunningAnim;
-
-var()			bool							bHasMelee, bHasRanged, bWalkingAttack, bWalkingRanged, bHasLunge, bIsLunging, bIsCrawling, bLungeIfCrouched;
-var()			array<Name>						MeleeAttackAnims;
-var()			array<Name>						RangedAttackAnims;
-var()			array<Name>						CrouchedRangedAnims;
-var()			array<Name>						SightAnims;
-
-var()			array<Name>						PainAnims;
-var()			int								PunchDamage, LungeDamage;
-var()			float							AttackDistance, SightChance, RangedAttackDistance, LungeChance, LungeDistance;
-var()			Class<Projectile>				MissileClass;
-var()           float                           ProjDamageMult;
-
-var()			name							TipBone, TipBoneLeft, TipBoneRight;
-var()			float							RangedDelay, LungeSpeed;
-
-var()			name							LungeStartAnim, LungeMidAnim, LungeEndAnim;
-var()			float							PreRotateModifier;
-var()			float							CrawlChance;
-
-var()			float							ChatterTime;
 
 //=============================================================================
-//--BOSS CAMERA----------------------------------------------------------------
+//--ANIMATIONS-----------------------------------------------------------------
+
+var AnimNodePlayCustomAnim  CustomAnimator, WalkSwitch;
+var AnimNodeBlend CrawlBlender;
+
+/** Monster has a melee attack */
+var bool bHasMelee;
+/** Monster has a ranged attack */
+var bool bHasRanged;
+/** Monster continues to walk when meleeing */
+var bool bWalkingAttack;
+/** Monster continues to walk when doing ranged attack */
+var bool bWalkingRanged;
+
+/** Animations to play when attacking */
+var array<Name> MeleeAttackAnims;
+/** Animations to play when shooting / ranged */
+var array<Name> RangedAttackAnims;
+/** Animations to play when shooting / crouched (crawling?) */
+var array<Name> CrouchedRangedAnims;
+/** Anims to play when we get a new target */
+var array<Name> SightAnims;
+/** Anims to play when we get hurt */
+var array<Name> PainAnims;
+
+/** This monster's run anim */
+var name RunningAnim;
+/** Lunge animations */
+var name LungeStartAnim, LungeMidAnim, LungeEndAnim;
+
+/** Chance to play sight anim */
+var float SightChance;
+/** Amount to speed up our rotation rate when we're prepping ranged attacks */
+var float PreRotateModifier;
+
+/** Replicate custom anims to clients (attack, sight...) */
+struct sRepAnimInfo
+{
+	/** Switch to force-replicate if it is the same anim as before */
+	var bool bSwitch;
+	var Name AnimName;
+};
+/** Replicate custom anims to clients (attack, sight...) */
+var RepNotify sRepAnimInfo ForcedAnim;
+
+
+//=============================================================================
+//--BOSS STUFF-----------------------------------------------------------------
 // bIsBossMonster: Uses the boss camera when spawning, also starts next wave
 // Attachee: Camera position during sight
 // BossBone: Bone / socket to attach the sight camera to
@@ -114,37 +174,37 @@ var()			AnimNodeSequence				CustomSeq;
 var()			int								ShakeDamage;
 var()			float							ShakeDistance;
 
+
 //=============================================================================
 //--DYING, RAGDOLL, GIBS-------------------------------------------------------
 
 /** Time at which this pawn entered the dying state */
 var float DeathTime;
-
-/** Set when pawn died on listen server, but was hidden rather than ragdolling (for replication purposes) */
-var bool bHideOnListenServer;
 /** Max duration of ragdoll */
 var float RagdollLifespan;
-
-/** whether or not we have been gibbed already */
-var bool bGibbed;
-/** Replicated when torn off body should gib */
-//var bool bTearOffGibs;
 /** Track damage accumulated during a tick - used for gibbing determination */
 var float AccumulateDamage;
 /** Tick time for which damage is being accumulated */
 var float AccumulationTime;
 
-/** Gib sounds */
-var SoundCue GibSound;
-var SoundCue CrushedSound;
+/** Set when pawn died on listen server, but was hidden rather than ragdolling (for replication purposes) */
+var bool bHideOnListenServer;
+/** whether or not we have been gibbed already */
+var bool bGibbed;
 
-/** Blood stuff - from UTFamilyInfo */
+/** Gib sounds */
+var SoundCue GibSound, CrushedSound;
+
+/** Blood stuff */
 var MaterialInstance BloodSplatterDecalMaterial;
+/** Blood stuff */
 var array<DistanceBasedParticleTemplate> BloodEffects;
+/** Blood stuff */
 var class<UTEmit_HitEffect> BloodEmitterClass;
 
-/** Gibs - from UTFamilyInfo */
+/** Bone gibs */
 var array<GibInfo> Gibs;
+/** Gib explosion particlesystem */
 var ParticleSystem GibExplosionTemplate;
 
 
@@ -157,10 +217,13 @@ replication
 
 	if (bNetDirty || bNetInitial)
 		bIsCrawling;
+
+	if ( bNetDirty && !bNetInitial )
+		ForcedAnim;
 }
 
 // Decide whether or not we're crawling (imps / vulgars)
-reliable server function SetCrawling(bool bCrawl)
+function SetCrawling(bool bCrawl)
 {
 	bIsCrawling = bCrawl;
 }
@@ -168,15 +231,18 @@ reliable server function SetCrawling(bool bCrawl)
 // Do a radial shake, called on the player viewport
 simulated function ScreenShake(int Intensity, float Dist)
 {
-	local PlayerController PC;
+	local UTPlayerController PC;
 	
-	if (WorldInfo.NetMode == NM_DedicatedServer)
-		return;
-		
-	PC = GetALocalPlayerController();
-	
-	if (PC.Pawn != None && UTPlayerController(PC) != None)
-		UTPlayerController(PC).DamageShake(Intensity * (1.0 -(VSize(PC.Pawn.Location - Location)/Dist)),None);
+	if (WorldInfo.NetMode != NM_DedicatedServer)
+	{
+		foreach WorldInfo.LocalPlayerControllers(class'UTPlayerController', PC)
+		{
+			if ( PC.Pawn != None )
+				PC.DamageShake(Intensity * (1.0 -(VSize(PC.Pawn.Location - Location)/Dist)),None);
+			else if ( PC.ViewTarget != None )
+				PC.DamageShake(Intensity * (1.0 -(VSize(PC.ViewTarget.Location - Location)/Dist)),None);
+		}
+	}
 }
 
 // Is the actor in front of us?
@@ -237,7 +303,7 @@ simulated function Tick(float Delta)
 		return;
 	
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
-	// ToDo: Add tween to this that way it doesn't radically snap
+	//TODO: Add tween to this that way it doesn't radically snap
 	if (TorsoAimer != None && bUseAimOffset)
 	{
 		GetBoundingCylinder(CR1, CH1);
@@ -343,7 +409,7 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 }
 
 // Special cinematic boss camera
-reliable server function SetBossCamera(bool bBoss)
+function SetBossCamera(bool bBoss)
 {
 	local Controller C;
 	local Vector V;
@@ -374,7 +440,6 @@ reliable server function SetBossCamera(bool bBoss)
 				UTPlayerController(C).SetViewTarget(Attachee);
 				UTPlayerController(C).ClientSetViewTarget(Attachee);
 			}
-			
 			else
 			{
 				bDidCamera=true;
@@ -392,7 +457,6 @@ reliable server function SetBossCamera(bool bBoss)
 					UTPlayerController(C).ClientSetViewTarget(None);
 				}		
 			}
-			
 		}
 	}
 }
@@ -451,7 +515,9 @@ simulated function CheckController()
 }
 
 // Play idle / chatter sounds
-simulated function DoChatter()
+// server-side (we access the controller) => replicate sounds
+// this could be moved to client-side for better network performance, but we need to replicate the combat/idle state
+function DoChatter()
 {
 	if (Controller == None || Health <= 0)
 		return;
@@ -462,11 +528,11 @@ simulated function DoChatter()
 		if (Pawn(ToxikkMonsterController(Controller).Target) != None)
 		{
 			if ( ChatterSound != None )
-				PlaySound(ChatterSound,TRUE);
+				PlaySound(ChatterSound);
 		}
 		// Else, play idle
 		else if ( IdleSound != None )
-			PlaySound(IdleSound,TRUE);
+			PlaySound(IdleSound);
 	}
 }
 
@@ -967,52 +1033,60 @@ ignores OnAnimEnd, Bump, HitWall, HeadVolumeChange, PhysicsVolumeChange, Falling
 
 
 //================================================
-// ...
+// ReplicatedEvent
+//================================================
+
+simulated event ReplicatedEvent(Name VarName)
+{
+	if ( VarName == 'ForcedAnim' )
+		PlayForcedAnim(ForcedAnim.AnimName);
+	else
+		Super.ReplicatedEvent(VarName);
+}
+
+
+//================================================
+// Custom animations (attack, sight...)
 //================================================
 
 // Play a single-shot forced anim with optional sound
 // Should be done on both client and server
-simulated function PlayForcedAnim(name A, optional SoundCue Snd)
+simulated function PlayForcedAnim(Name AnimName)
 {
-	local int l;
-	local bool bUseRoot;
-	
-	ClientPlayForcedAnim(A, Snd);
-	
-	if (CustomAnimator == None || Health <= 0)
+	local int i;
+
+	// skip if wrong state
+	if ( CustomAnimator == None || Mesh == None || Len(String(ForcedAnim.AnimName)) == 0 || IsInState('Dying') || Health <= 0 )
 		return;
-		
-	// Root animation?
-	for (l=0; l<RootAnims.Length; l++)
+
+	// force replicate the animation
+	if ( Role == ROLE_Authority )
 	{
-		if (RootAnims[l] == A)
-			bUseRoot=true;
+		ForcedAnim.AnimName = AnimName;
+		ForcedAnim.bSwitch = !ForcedAnim.bSwitch;
 	}
-	
-	// Enable root anims
-	if (bUseRoot)
+
+	// Enable root anims if necessary
+	for ( i=0; i<RootAnims.Length; i++ )
 	{
-		CustomSeq.SetRootBoneAxisOption(RBA_Translate, RBA_Translate, RBA_Translate);
-		Mesh.RootMotionMode = RMM_Accel;
-		CustomSeq.bCauseActorAnimEnd = TRUE;
-		Mesh.bRootMotionModeChangeNotify = TRUE;
+		if ( RootAnims[i] == AnimName )
+		{
+			CustomSeq.SetRootBoneAxisOption(RBA_Translate, RBA_Translate, RBA_Translate);
+			Mesh.RootMotionMode = RMM_Accel;
+			CustomSeq.bCauseActorAnimEnd = true;
+			Mesh.bRootMotionModeChangeNotify = true;
+			break;
+		}
 	}
-		
-	if (Snd != None)
-		PlaySound(Snd, TRUE);
-		
-	CustomAnimator.PlayCustomAnim(A,1.0);
+
+	// play (both on server and client)
+	CustomAnimator.PlayCustomAnim(AnimName, 1.0);
 }
 
-// Unreliable possibly
-//FIXME: no RPC in Pawn, need to use a State system probably (mirror the states in MonsterController and play anims on client-side ?)
-reliable client function ClientPlayForcedAnim(name A, optional SoundCue Snd)
-{
-	if (CustomAnimator == None || Health <= 0)
-		return;
-		
-	CustomAnimator.PlayCustomAnim(A,1.0);
-}
+
+//================================================
+// ...
+//================================================
 
 // Let root motion take over
 simulated event RootMotionModeChanged(SkeletalMeshComponent SkelComp)
@@ -1062,7 +1136,7 @@ event Bump(Actor Other, PrimitiveComponent OtherComp, Vector HitNormal)
 }
 
 // Animnotify, play a footstep sound
-function PlayFootstep()
+simulated function PlayFootstep()
 {
 	if (!IsInState('Dying') && Health > 0 && WorldInfo.NetMode != NM_DedicatedServer)
 	{
@@ -1072,14 +1146,26 @@ function PlayFootstep()
 }
 
 // Damage enemy (Called from notify)
-simulated function MeleeDamage()
+function MeleeDamage()
 {
-	local vector V;
+	local Actor A;
 	
-	if (Pawn(ToxikkMonsterController(Controller).Target) != None && ROLE == ROLE_Authority)
+	if ( Role == ROLE_Authority && Pawn(ToxikkMonsterController(Controller).Target) != None )
 	{
+		// EXPERIMENT
+		foreach WorldInfo.VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
+		{
+			// only hit in front
+			if ( A != Self && Normal(A.Location - Location) Dot Normal(Vector(Rotation)) > Cos(DegToRad * PunchDegrees) )
+			{
+				A.TakeDamage(PunchDamage, Controller, (Location + A.Location)/2, PunchMomentum*Normal(A.Location - Location), class'IFDmgType_Melee');
+			}
+		}
+
+		/* old
 		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
 			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, V, None);
+		*/
 	}
 }
 
@@ -1166,7 +1252,7 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 
 	// say "ouch"
 	if ( FRand() >= PainSoundChance )
-		PlaySound(PainSound, TRUE);
+		PlaySound(PainSound);
 
 	// spill some blood
 	BloodMomentum = Momentum;
@@ -1275,6 +1361,8 @@ DefaultProperties
 	MeleeAttackAnims(3)=MeleeAttack04
 	
 	PunchDamage=10
+	PunchDegrees=60
+	PunchMomentum=1000
 
 	ProjDamageMult=1.0
 

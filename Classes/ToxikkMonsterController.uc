@@ -79,7 +79,7 @@ function float GetInFront(actor A, actor B)
 }
 
 // Acquire a new target
-simulated function LockOnTo(Pawn Seen)
+function LockOnTo(Pawn Seen)
 {
 	if (Target != Seen)
 	{
@@ -143,7 +143,7 @@ state PreAttack
 //--DOING OUR LUNGE ATTACK---------------------------
 state Lunging
 {
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
 		SetRotation(DesiredRot);
@@ -191,7 +191,7 @@ state Lunging
 // PLAYING SIGHT ANIM
 state Sight
 {	
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
 		SetRotation(DesiredRot);
@@ -209,7 +209,8 @@ state Sight
 		
 		// `Log("Playing sight anim"@string(i)$"...");
 		
-		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).SightAnims[tmp_i],ToxikkMonster(Pawn).SightSound);
+		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).SightAnims[tmp_i]);
+		Pawn.PlaySound(ToxikkMonster(Pawn).SightSound);
 		Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).SightAnims[tmp_i]));
 		
 		if (ToxikkMonster(Pawn).bIsBossMonster)
@@ -241,7 +242,7 @@ state Idling
 			LockOnTo(Weapon(NoiseMaker).Instigator);
 	}
 	
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
 		
@@ -302,7 +303,7 @@ auto state Wander
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
 state Attacking
 {
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
 
@@ -329,7 +330,8 @@ state Attacking
 		Pawn.Acceleration = vect(0,0,1);
 		
 		tmp_i = Rand(ToxikkMonster(Pawn).MeleeAttackAnims.Length);
-		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i],ToxikkMonster(Pawn).AttackSound);
+		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
+		Pawn.PlaySound(ToxikkMonster(Pawn).AttackSound);
 		tmp_TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
 		tmp_Timer = 0;
 		while (tmp_Timer < tmp_TimerGoal)
@@ -346,12 +348,12 @@ state Attacking
 			GotoState('Wander');
 }
 
-simulated function RangedException();
+function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
 {	
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
 		SetRotation(DesiredRot);
@@ -431,9 +433,10 @@ function bool ExtraRangedException()
 
 state ChasePlayer
 {	
-	simulated function Tick(float Delta)
+	function Tick(float Delta)
 	{
 		super.Tick(Delta);
+
 		RangedTimer += Delta;
 	}
 	

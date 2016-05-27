@@ -196,7 +196,7 @@ defaultproperties
 {
 	RadarSize=300
 
-	RadarBgTex=Texture2D'CRZGFx.HUD_I3D'
+	RadarBgTex=Texture2D'CRZGFx.HUD_I3E'
 	RadarBgColor=(R=0,G=0,B=0,A=255)
 
 	RadarFgTex=Texture2D'UDKHUD.ut3_minimap_compass'
