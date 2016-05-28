@@ -19,13 +19,16 @@ var RepNotify String WaveName;
 /** Server Replicated - Whether we are currently in pre-wave countdown */
 var bool bPreWaveCountdown;
 
+/** Server Replicated - Remaining monsters count for wave. Only valid once spawn phase is over. -1 = not valid */
+var int RemainingMonsters;
+
 Replication
 {
 	if ( bNetInitial )
 		AvgMapSize;
 
 	if ( bNetInitial || bNetDirty )
-		CurrentWave, WaveName, bPreWaveCountdown;
+		CurrentWave, WaveName, bPreWaveCountdown, RemainingMonsters;
 }
 
 function SetRemainingTime(int NewTime)
@@ -129,4 +132,5 @@ simulated event ReplicatedEvent(Name VarName)
 
 defaultproperties
 {
+	RemainingMonsters=-1
 }

@@ -2,6 +2,8 @@
 //------------------------------------------------------------------
 Class Vagary extends ToxikkMonster;
 
+//TODO: VAGARY IS STILL NOT FUNCTIONAL - IT SPAWNS SHARDS BUT HAVE NO EFFECT, AND CANT ATTACK
+
 // Number of shards to spawn
 var()							int						NumShards;
 var()							float					ShardSpawnChance;

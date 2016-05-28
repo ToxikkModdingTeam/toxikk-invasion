@@ -105,12 +105,24 @@ simulated function RadarScanTimer() {}
 
 simulated event PostRender()
 {
+	local float XL, YL;
+
 	Super.PostRender();
 
 	if ( RadarMaxDistSqrt > 0 )
 		DrawRadar();
 	else if ( InfekktedGRI(WorldInfo.GRI) != None && InfekktedGRI(WorldInfo.GRI).AvgMapSize > 0 )
 		RadarMaxDistSqrt = Sqrt( InfekktedGRI(WorldInfo.GRI).AvgMapSize );
+
+	// the GRI will start replicating RemainingMonsters once once we reach the post-spawn phase
+	if ( InfekktedGRI(WorldInfo.GRI) != None && InfekktedGRI(WorldInfo.GRI).RemainingMonsters >= 0 )
+	{
+		Canvas.Font = class'CRZHud'.default.GlowFonts[0];
+		Canvas.SetDrawColor(255,255,255);
+		Canvas.TextSize("Remaining monsters: " $ InfekktedGRI(WorldInfo.GRI).RemainingMonsters, XL ,YL);
+		Canvas.SetPos(Canvas.ClipX - 16 - XL, Canvas.ClipY*0.2 - 16 - YL);
+		Canvas.DrawText("Remaining monsters: " $ InfekktedGRI(WorldInfo.GRI).RemainingMonsters);
+	}
 }
 
 simulated function DrawRadar()
@@ -190,6 +202,26 @@ simulated function DrawRadar()
 		else if ( DistSqrt <= ScanPct*RadarMaxDistSqrt )
 			RadarItems[i].bShowing = true;
 	}
+}
+
+simulated function PostRenderBoss(ToxikkMonster Boss, Canvas C, Vector CamPos, Vector CamDir)
+{
+	local float XL, YL;
+	local int Health;
+
+	// Temporary stuff - we need a badass health bar
+	C.Font = class'CRZHud'.default.GlowFonts[0];
+
+	C.SetDrawColor(255, 255-byte(255.f*float(Boss.Health)/float(Boss.HealthMax)), 0);
+
+	C.TextSize("Boss HP: " $ Boss.HealthMax $ "/" $ Boss.HealthMax, XL, YL);
+	C.SetPos(C.ClipX - 16 - XL, C.ClipY/2);
+	C.DrawText("Boss HP:");
+
+	Health = ((Boss.IsInState('Dying') || Boss.Health < 0) ? 0 : Boss.Health);
+	C.TextSize(Health $ "/" $ Boss.HealthMax, XL, YL);
+	C.SetPos(C.ClipX - 16 - XL, C.ClipY/2);
+	C.DrawText(Health $ "/" $ Boss.HealthMax);
 }
 
 defaultproperties

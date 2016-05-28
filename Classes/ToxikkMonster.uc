@@ -209,6 +209,7 @@ var ParticleSystem GibExplosionTemplate;
 
 
 //=============================================================================
+//--REPLICATION----------------------------------------------------------------
 
 replication
 {
@@ -222,40 +223,201 @@ replication
 		ForcedAnim;
 }
 
-// Decide whether or not we're crawling (imps / vulgars)
-function SetCrawling(bool bCrawl)
-{
-	bIsCrawling = bCrawl;
-}
 
-// Do a radial shake, called on the player viewport
-simulated function ScreenShake(int Intensity, float Dist)
+//================================================
+// Init
+//================================================
+
+simulated function PostBeginPlay()
 {
-	local UTPlayerController PC;
+	// local NavigationPoint NP;
 	
-	if (WorldInfo.NetMode != NM_DedicatedServer)
+	Super.PostBeginPlay();
+	
+	// KEEP THE MODEL FROM LOOKING BLACK
+	//note: pls spare resources of dedicated servers
+	if ( WorldInfo.NetMode != NM_DedicatedServer )
 	{
-		foreach WorldInfo.LocalPlayerControllers(class'UTPlayerController', PC)
+		FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
+		LEC.SetEnabled(true); // now the dynamic light component
+
+		SetTimer(0.01, false, 'PostNetBeginPlay');  // a bit hacky - ideally it would be the first tick after PostBeginPlay
+	}
+
+	if (Role == ROLE_Authority)
+	{
+		SetTimer(1.0, false, 'CheckController');
+
+		SetTimer(ChatterTime, true, 'DoChatter'); //TODO: can we do this on client-side ?
+		
+		/* debug
+		// Spawn an emitter at every pathnode
+		ForEach AllActors(Class'NavigationPoint',NP)
 		{
-			if ( PC.Pawn != None )
-				PC.DamageShake(Intensity * (1.0 -(VSize(PC.Pawn.Location - Location)/Dist)),None);
-			else if ( PC.ViewTarget != None )
-				PC.DamageShake(Intensity * (1.0 -(VSize(PC.ViewTarget.Location - Location)/Dist)),None);
+			Spawn(Class'PathIndicator',,,NP.Location);
 		}
+		*/
 	}
 }
 
-// Is the actor in front of us?
-function float GetInFront(actor A, actor B)
+/** Called by gamemode right after spawn (first) */
+function SetMonsterIsBoss()
 {
-	local vector aFacing,aToB;
+	bIsBossMonster = true;
+	bForceInitialTarget = true;
+	// the boss is always relevant to all players - we could add a big boss health bar on the HUD
+	bAlwaysRelevant = true;
+	bReplicateHealthToAll = true;
+}
+
+/** Adjusters - called by gamemode right after spawn (second) **/
+function SetParameters(float Scale, int HP, float Speed, float Melee, float Range, String Extras)
+{
+	SetDrawScale(Scale);
+	HealthMax = HP; // acts as an "initial hp" constant
+	Health = HP;
+	GroundSpeed *= Speed;
+	PunchDamage *= Melee;
+	LungeDamage *= Range;
+	ProjDamageMult = Range;
+}
+
+/** For mapped and manually spawned monsters - give them a controller automatically **/
+function CheckController()
+{
+	if (Controller == None)
+		SpawnDefaultController();
+}
+
+// Play idle / chatter sounds
+// server-side (we access the controller) => replicate sounds
+// this could be moved to client-side for better network performance, but we need to replicate the combat/idle state
+function DoChatter()
+{
+	if (Controller == None || Health <= 0)
+		return;
+		
+	if (ToxikkMonsterController(Controller) != None)
+	{
+		// If we're in combat then play combatchatter
+		if (Pawn(ToxikkMonsterController(Controller).Target) != None)
+		{
+			if ( ChatterSound != None )
+				PlaySound(ChatterSound);
+		}
+		// Else, play idle
+		else if ( IdleSound != None )
+			PlaySound(IdleSound);
+	}
+}
+
+/** Called on client when initially replicated variables are ready */
+simulated function PostNetBeginPlay()
+{
+	local PlayerController PC;
+
+	if ( bIsBossMonster )
+	{
+		foreach WorldInfo.LocalPlayerControllers(class'PlayerController', PC)
+			PC.myHUD.AddPostRenderedActor(Self);
+	}
+}
+
+/** Anim tree is initialized : grab some animation parameters */
+simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
+{
+    super.PostInitAnimTree(SkelComp);
+
+    if (SkelComp == Mesh)
+	{
+        CustomAnimator = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('CustomPlayer'));
+        WalkSwitch = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('WalkSwitch'));
+		TorsoAimer = AnimNodeAimOffset(SkelComp.FindAnimNode('AimNode'));
+		CustomSeq = AnimNodeSequence(SkelComp.FindAnimNode('CustomSeq'));
+		CrawlBlender = AnimNodeBlend(SkelComp.FindAnimNode('CrawlBlend'));
+		
+		// Set default walk anim
+		WalkSwitch.PlayCustomAnim(RunningAnim,1.0,,,true);
+		TorsoAimer.SetActiveProfileByName(TorsoName);
+	}
+}
+
+
+//================================================
+// Boss stuff
+//================================================
+
+function SetBossCamera(bool bSet)
+{
+	local Controller C;
+	local Vector V;
+
+	//TODO: overhaul this shit!
+	return;
+
+	//ifpossible: use the function in UTPawn that picks a "good end-game focus point"
+	//then make the camera ghost-travel smoothly to that point
+	//animate-interpolate startpoint -> endpoint with ease-in-out
+	//animate-interpolate startrot -> endrot with ease-in-out
+
+	//start with linear interpolation for simplicity, see later for the ease-in-out
+
+	//first we need to decouple BossCam from Sight animation in MonsterController
+	//the force-target is ok and will trigger the sight animation - we can launch the bosscam from here independently
+	//the boss is AlwaysRelevant so we should be able to do that fully client-side
+	//maybe we won't see other monsters/players during the travel (because not relevant) but doesn't matter
+	//the travel should be very quick : 1sec travel to boss : watch boss 3-4 secs : 1 sec travel back to pawn
+
+	//TODO: when this works, we need to cancel damage done to players during that bosscam-state
+	//do that in gamemode, as soon as boss is spawned, enable a timer of 5 secs and give pawns spawnprotection
+
+	//ideally the timers (watchboss and protection) should be based on the duration of the anim, not hardcoded
+
+	if (bDidCamera)
+		return;
 	
-	// What direction is A facing in?
-	aFacing=Normal(Vector(A.Rotation));
-	// Get the vector from A to B
-	aToB=B.Location-A.Location;
-	 
-	return(aFacing dot aToB);
+	V = BossVector;
+	
+	ControllerList.Length = 0;
+	
+	bIsInSight = bSet;
+	
+	ForEach WorldInfo.AllControllers(Class'Controller',C)
+	{
+		if( UTPlayerController(C)!=None )
+		{
+			ControllerList.AddItem(UTPlayerController(C));
+			
+			if (bSet)
+			{
+				if (Attachee == None)
+				{
+					Attachee = Spawn(Class'FakeAttach',Self);
+					Attachee.SetBase(Self,,Mesh,BossBone);
+					Attachee.SetRelativeLocation(V);
+				}
+				UTPlayerController(C).SetViewTarget(Attachee);
+				UTPlayerController(C).ClientSetViewTarget(Attachee);
+			}
+			else
+			{
+				bDidCamera=true;
+				Attachee.Destroy();
+				ControllerList.Length = 0;
+				
+				if (C.Pawn != None)
+				{
+					UTPlayerController(C).SetViewTarget(UTPlayerController(C).Pawn);
+					UTPlayerController(C).ClientSetViewTarget(UTPlayerController(C).Pawn);
+				}
+				else
+				{
+					UTPlayerController(C).SetViewTarget(None);
+					UTPlayerController(C).ClientSetViewTarget(None);
+				}		
+			}
+		}
+	}
 }
 
 // Force the camera to look at us if we're in boss mode
@@ -265,7 +427,6 @@ simulated function Tick(float Delta)
 	local rotator R, FR, UUR;
 	local Vector HL;
 	local Vector2D AV;
-	// OurVector, TheirVector
 	local vector OV, TV;
 	local float CH1, CR1, CH2, CR2;
 	local float RX, RY;
@@ -280,16 +441,16 @@ simulated function Tick(float Delta)
 			// Get the spot to focus the camera on
 			if (!Mesh.GetSocketWorldLocationAndRotation(FocusBone, HL, UUR, 0))
 				HL = Mesh.GetBoneLocation(FocusBone);
-			
+
 			FR = RTurn(Rotator(Attachee.Location - HL),R);
-			
+
 			for (l=0; l<ControllerList.Length; l++)
 			{
 				ControllerList[l].SetRotation(FR);
 			}
 		}
 	}
-		
+
 	// If we're crawling, set the crawl blender accordingly
 	if (CrawlBlender != None)
 	{
@@ -301,7 +462,7 @@ simulated function Tick(float Delta)
 
 	if (Controller == None)
 		return;
-	
+
 	// SERVER AND CLIENT BOTH, FOR POSITIONS
 	//TODO: Add tween to this that way it doesn't radically snap
 	if (TorsoAimer != None && bUseAimOffset)
@@ -373,6 +534,19 @@ simulated function Tick(float Delta)
 	super.Tick(Delta);
 }
 
+// Is the actor in front of us?
+function float GetInFront(actor A, actor B)
+{
+	local vector aFacing,aToB;
+	
+	// What direction is A facing in?
+	aFacing=Normal(Vector(A.Rotation));
+	// Get the vector from A to B
+	aToB=B.Location-A.Location;
+	 
+	return(aFacing dot aToB);
+}
+
 // Rotate two rotators
 function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 {
@@ -408,151 +582,38 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
    return(T);    
 }
 
-// Special cinematic boss camera
-function SetBossCamera(bool bBoss)
+/** Delegate to HUD */
+simulated event PostRenderFor(PlayerController PC, Canvas C, Vector CamPos, Vector CamDir)
 {
-	local Controller C;
-	local Vector V;
+	if ( PC != None && InfekktedHud(PC.myHUD) != None )
+		InfekktedHud(PC.myHUD).PostRenderBoss(Self, C, CamPos, CamDir);
+}
+
+
+//================================================
+// Misc
+//================================================
+
+// Decide whether or not we're crawling (imps / vulgars)
+function SetCrawling(bool bCrawl)
+{
+	bIsCrawling = bCrawl;
+}
+
+// Do a radial shake, called on the player viewport
+simulated function ScreenShake(int Intensity, float Dist)
+{
+	local UTPlayerController PC;
 	
-	if (bDidCamera)
-		return;
-	
-	V = BossVector;
-	
-	ControllerList.Length = 0;
-	
-	bIsInSight = bBoss;
-	
-	ForEach WorldInfo.AllControllers(Class'Controller',C)
+	if (WorldInfo.NetMode != NM_DedicatedServer)
 	{
-		if( UTPlayerController(C)!=None )
+		foreach WorldInfo.LocalPlayerControllers(class'UTPlayerController', PC)
 		{
-			ControllerList.AddItem(UTPlayerController(C));
-			
-			if (bBoss)
-			{
-				if (Attachee == None)
-				{
-					Attachee = Spawn(Class'FakeAttach',Self);
-					Attachee.SetBase(Self,,Mesh,BossBone);
-					Attachee.SetRelativeLocation(V);
-				}
-				UTPlayerController(C).SetViewTarget(Attachee);
-				UTPlayerController(C).ClientSetViewTarget(Attachee);
-			}
-			else
-			{
-				bDidCamera=true;
-				Attachee.Destroy();
-				ControllerList.Length = 0;
-				
-				if (C.Pawn != None)
-				{
-					UTPlayerController(C).SetViewTarget(UTPlayerController(C).Pawn);
-					UTPlayerController(C).ClientSetViewTarget(UTPlayerController(C).Pawn);
-				}
-				else
-				{
-					UTPlayerController(C).SetViewTarget(None);
-					UTPlayerController(C).ClientSetViewTarget(None);
-				}		
-			}
+			if ( PC.Pawn != None )
+				PC.DamageShake(Intensity * (1.0 -(VSize(PC.Pawn.Location - Location)/Dist)),None);
+			else if ( PC.ViewTarget != None )
+				PC.DamageShake(Intensity * (1.0 -(VSize(PC.ViewTarget.Location - Location)/Dist)),None);
 		}
-	}
-}
-
-// Set up lighting and spawn a controller
-simulated function PostBeginPlay()
-{
-	// local NavigationPoint NP;
-	
-	Super.PostBeginPlay();
-	
-	// KEEP THE MODEL FROM LOOKING BLACK
-	FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
-	LEC.SetEnabled(true); // now the dynamic light component
-
-	if (Role == ROLE_Authority)
-	{
-		SetTimer(1.0,false,'CheckController');
-		SetTimer(ChatterTime,true,'DoChatter');
-		
-		/*
-		// Spawn an emitter at every pathnode
-		ForEach AllActors(Class'NavigationPoint',NP)
-		{
-			Spawn(Class'PathIndicator',,,NP.Location);
-		}
-		*/
-	}
-}
-
-// Called by gamemode right after spawn (first)
-function SetMonsterIsBoss()
-{
-	bIsBossMonster = true;
-	bForceInitialTarget = true;
-	bAlwaysRelevant = true;
-}
-
-// Adjusters - called by gamemode right after spawn (second)
-function SetParameters(float Scale, int HP, float Speed, float Melee, float Range, String Extras)
-{
-	SetDrawScale(Scale);
-	HealthMax = HP; // acts as an "initial hp" constant
-	Health = HP;
-	GroundSpeed *= Speed;
-	PunchDamage *= Melee;
-	LungeDamage *= Range;
-	ProjDamageMult = Range;
-}
-
-// For mapped and manually spawned monsters - give them a controller automatically
-simulated function CheckController()
-{
-	if (Controller == None)
-		SpawnDefaultController();
-}
-
-// Play idle / chatter sounds
-// server-side (we access the controller) => replicate sounds
-// this could be moved to client-side for better network performance, but we need to replicate the combat/idle state
-function DoChatter()
-{
-	if (Controller == None || Health <= 0)
-		return;
-		
-	if (ToxikkMonsterController(Controller) != None)
-	{
-		// If we're in combat then play combatchatter
-		if (Pawn(ToxikkMonsterController(Controller).Target) != None)
-		{
-			if ( ChatterSound != None )
-				PlaySound(ChatterSound);
-		}
-		// Else, play idle
-		else if ( IdleSound != None )
-			PlaySound(IdleSound);
-	}
-}
-
-// Anim tree is initialized
-// Grab some animation parameters
-simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
-{
-    super.PostInitAnimTree(SkelComp);
-
-    if (SkelComp == Mesh)
-	{
-        CustomAnimator = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('CustomPlayer'));
-        WalkSwitch = AnimNodePlayCustomAnim(SkelComp.FindAnimNode('WalkSwitch'));
-		TorsoAimer = AnimNodeAimOffset(SkelComp.FindAnimNode('AimNode'));
-		CustomSeq = AnimNodeSequence(SkelComp.FindAnimNode('CustomSeq'));
-		CrawlBlender = AnimNodeBlend(SkelComp.FindAnimNode('CrawlBlend'));
-		
-		// Set default walk anim
-		WalkSwitch.PlayCustomAnim(RunningAnim,1.0,,,true);
-		TorsoAimer.SetActiveProfileByName(TorsoName);
 	}
 }
 
@@ -1277,7 +1338,7 @@ DefaultProperties
 	BloodEffects[2]=(Template=ParticleSystem'Gore_Impact.Particles.P_Gore_Impact_Near',MinDistance=0.0)
 	BloodEmitterClass=class'UTGame.UTEmit_BloodSpray'
 	Gibs[0]=(BoneName=head, GibClass=class'CRZGib_Bright_Male01_Head', bHighDetailOnly=false)
-	//TODO: define more gibs
+	//TODO: define more gibs, different for each monster (depending on their bones...)
 	/*
 	HeadGib=(BoneName=b_Head,			GibClass=class'CRZGib_Bright_Male01_Head',              bHighDetailOnly=true)
 	Gibs[0]=(BoneName=b_LeftArm,		GibClass=class'CRZGib_Bright_Male01_LeftArm',           bHighDetailOnly=false)

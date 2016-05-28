@@ -175,6 +175,7 @@ State PreWaveCountdown
 		CurrentPenalty = PNLTY_None;
 		MonstersToSpawn = 0.0;
 		SpawnedMonsters = 0;
+		GRI.RemainingMonsters = -1;
 
 		// delay stuff a bit for smoothness
 		GRI.bStopCountDown = true;
@@ -417,7 +418,11 @@ State MatchInProgress
 		{
 			// Check if we should go into BossInProgress
 			foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
-				Count++;
+			{
+				if ( M.Health > 0 )
+					Count++;
+			}
+			GRI.RemainingMonsters = Count;  // update remaining count as long as boss is not here
 
 			if ( Count <= 0.2*AdjustedMaxDensity )
 				GotoState('BossInProgress');
@@ -459,6 +464,7 @@ State MatchInProgress
 				}
 			}
 		}
+		GRI.RemainingMonsters = Count;
 
 		if ( Count == 0 )
 			GotoState('EndOfWave');
@@ -512,8 +518,10 @@ State BossInProgress extends MatchInProgress
 		PenaltyCount = 0;
 		bCanSpawnMidWave = false;   // still not sure
 
+		// RemainingMonsters is not important anymore - boss is the focus
+		GRI.RemainingMonsters = -1;
 		GRI.SetRemainingTime(CurrentWave.BossTimeLimit);
-		// We don't want to count down the remaining time until boss is actually spawned.
+		// Avoid counting down time until boss is actually spawned.
 		GRI.bStopCountDown = true;
 	}
 
@@ -597,6 +605,7 @@ State EndOfWave extends MatchInProgress
 {
 	function BeginState(Name PrevStateName)
 	{
+		GRI.RemainingMonsters = -1;
 		GRI.bStopCountDown = true;
 		SetTimer(2.0, false, 'RealEndOfWave');
 	}
@@ -653,6 +662,7 @@ function GameOver(bool bWinner)
 
 function bool CheckEndGame(PlayerReplicationInfo Winner, string Reason)
 {
+	local PlayerController PC;
 	local ToxikkMonster M;
 	local Controller C;
 	local Vehicle V;
@@ -660,6 +670,17 @@ function bool CheckEndGame(PlayerReplicationInfo Winner, string Reason)
 	if ( Reason ~= "triggered" )
 	{
 		EndTime = WorldInfo.TimeSeconds + EndTimeDelay;
+
+		// get dead players out of spec so they can access end-game screens and vote
+		foreach WorldInfo.AllControllers(class'PlayerController', PC)
+		{
+			if ( PC.PlayerReplicationInfo != None && !PC.PlayerReplicationInfo.bOnlySpectator && PC.PlayerReplicationInfo.bOutOfLives )
+			{
+				PC.PlayerReplicationInfo.bOutOfLives = false;
+				PC.PlayerReplicationInfo.bReadyToPlay = true;
+				PC.GotoState('PlayerWaiting');
+			}
+		}
 
 		if ( bPlayersWon )
 		{
