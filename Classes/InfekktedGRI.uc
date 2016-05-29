@@ -31,6 +31,56 @@ Replication
 		CurrentWave, WaveName, bPreWaveCountdown, RemainingMonsters;
 }
 
+/** FIX: DomPoints */
+simulated event PostBeginPlay()
+{
+	Super.PostBeginPlay();
+
+	if ( WorldInfo.NetMode == NM_Client )
+	{
+		RemoveUnsupportedActors();
+		/*
+		if ( WorldInfo.NetMode == NM_Client )
+		{
+			SetTimer(1.0, false, 'RemoveUnsupportedActors');
+		}
+		*/
+	}
+}
+
+simulated function RemoveUnsupportedActors()
+{
+	local Actor A;
+	local CRZMapInfo MI;
+	local bool Supported;
+
+	MI = CRZMapInfo(WorldInfo.GetMapInfo());
+	foreach WorldInfo.AllActors(Class'Actor', A)
+	{
+		Supported=true;
+
+		if(!class'InfekktedGame'.static.IsActorSupportedByGame(A))
+			Supported = false;
+
+		if(Supported && MI != none)
+		{	
+			if(!MI.IsActorSupportedByMapAndGametype(A, class'InfekktedGame' ))	
+				Supported = false;
+		}
+
+		if ( A.IsA('CRZAreaDominationPoint') )
+			`Log("[D] DOMPOINT Supported=" $ Supported);
+
+		if(!Supported)
+		{
+			if (A.bNoDelete)
+				A.ShutDown();
+			else
+				A.Destroy();	
+		}
+	}
+}
+
 function SetRemainingTime(int NewTime)
 {
 	RemainingTime = NewTime;

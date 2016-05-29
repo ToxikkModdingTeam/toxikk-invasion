@@ -623,9 +623,10 @@ simulated function ScreenShake(int Intensity, float Dist)
 //================================================
 
 /** Standard way to play dying sound */
-function PlayDyingSound()
+simulated function PlayDyingSound()
 {
-	PlaySound(DeathSound);    //FROM UTPawnSoundGroup
+	if ( WorldInfo.NetMode != NM_DedicatedServer )
+		PlaySound(DeathSound, true);
 }
 
 /** Responsible for playing any death effects, animations, etc. */
@@ -913,7 +914,7 @@ simulated function SetPawnRBChannels(bool bRagdollMode)
 
 /** State Dying */
 //SMARTCOPY UTPawn
-simulated State Dying
+State Dying
 {
 ignores OnAnimEnd, Bump, HitWall, HeadVolumeChange, PhysicsVolumeChange, Falling, BreathTimer, FellOutOfWorld;
 
@@ -1233,55 +1234,47 @@ function MeleeDamage()
 // Called from notify, shoot a projectile
 simulated function ShootProjectile()
 {
-	if (Role == ROLE_Authority)
-		DoShot(TipBone);
-		
-	if (FireSound != None)
-		PlaySound(FireSound,TRUE);
+	DoShot(TipBone);
 }
-
-// Same, but for left bone
 simulated function ShootProjectileLeft()
 {
-	if (Role == ROLE_Authority)
-		DoShot(TipBoneLeft);
-		
-	if (FireSound != None)
-	PlaySound(FireSound,TRUE);
+	DoShot(TipBoneLeft);
 }
-
-// Same, but for right bone
 simulated function ShootProjectileRight()
 {
-	if (Role == ROLE_Authority)
-		DoShot(TipBoneRight);
-		
-	if (FireSound != None)
-	PlaySound(FireSound,TRUE);
+	DoShot(TipBoneRight);
 }
 
 // SHOOT A PROJECTILE FROM A BONE
-reliable server function DoShot(name BoneName)
+simulated function DoShot(name BoneName)
 {
 	local Vector FinalLoc;
 	local Rotator SocketRotation, FinalRotation;
 	local Projectile Proj;
+
+	if ( IsInState('Dying') || Health <= 0 )
+		return;
+
+	if ( Role == ROLE_Authority )
+	{
+		// Find a socket if we can
+		if (Mesh.GetSocketWorldLocationAndRotation(BoneName, FinalLoc, SocketRotation, 0)) {}
+		// Otherwise, find the bone
+		else
+			FinalLoc = Mesh.GetBoneLocation(BoneName);
 	
-	// Find a socket if we can
-	if (Mesh.GetSocketWorldLocationAndRotation(BoneName, FinalLoc, SocketRotation, 0)) {}
-	// Otherwise, find the bone
-	else
-		FinalLoc = Mesh.GetBoneLocation(BoneName);
+		// Once we figure out the starting positions, shoot projectiles toward the player
+		FinalRotation = rotator(Normal(ToxikkMonsterController(Controller).Target.Location - FinalLoc));
 	
-	// Once we figure out the starting positions, shoot projectiles toward the player
-	FinalRotation = rotator(Normal(ToxikkMonsterController(Controller).Target.Location - FinalLoc));
-	
-	// SPAWN THE ACTUAL PROJECTILE
-	Proj = Spawn(MissileClass,Controller,,FinalLoc,FinalRotation);
-	Proj.Damage *= ProjDamageMult;
-	// Proj.Speed = 50;
-	if (CRZProjectile(Proj) != None)
-		CRZProjectile(Proj).CRZInit(vector(FinalRotation),vector(FinalRotation),-1);
+		// SPAWN THE ACTUAL PROJECTILE
+		Proj = Spawn(MissileClass,Controller,,FinalLoc,FinalRotation);
+		Proj.Damage *= ProjDamageMult;
+		// Proj.Speed = 50;
+		if (CRZProjectile(Proj) != None)
+			CRZProjectile(Proj).CRZInit(vector(FinalRotation),vector(FinalRotation),-1);
+	}
+	if ( WorldInfo.NetMode != NM_DedicatedServer && FireSound != None )
+		PlaySound(FireSound, true);
 }
 
 // New target acquired

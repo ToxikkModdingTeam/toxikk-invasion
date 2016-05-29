@@ -170,7 +170,7 @@ auto simulated state Pickup
 		}
 
 		// Bobbing
-		if ( bLandedOnce )
+		if ( WorldInfo.NetMode != NM_DedicatedServer && bLandedOnce )
 		{
 			PSBobCounter.Z += dt;
 			V = PSBaseTranslation;

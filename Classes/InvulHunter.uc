@@ -28,8 +28,9 @@ replication
 
 simulated function Tick(float Delta)
 {
-	ControlZapAlpha(Delta);
 	Super.Tick(Delta);
+
+	ControlZapAlpha(Delta);
 }
 
 // CONTROL THE ZAP INTENSITY
@@ -54,11 +55,12 @@ simulated function ControlZapAlpha(float Delta)
 simulated function ControlZapAlpha(float Delta)
 {
 	if (bInvincible && Health > 0)
-		ZapAlpha=InvulZap;
+		ZapAlpha = InvulZap;
 	else
-		ZapAlpha=NormalZap;
-	
-	ZapMIC.SetScalarParameterValue(ZapParameter,ZapAlpha);
+		ZapAlpha = NormalZap;
+
+	if ( ZapMIC != None )
+		ZapMIC.SetScalarParameterValue(ZapParameter, ZapAlpha);
 }
 
 // Only stomp serverside

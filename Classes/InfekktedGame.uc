@@ -9,11 +9,13 @@ class InfekktedGame extends CRZGame
 	Config(Infekkted)
 	DependsOn(WaveConfig);
 
+
 //================================================
 // Config
 //================================================
 
 var InfekktedConfig Conf;
+
 
 //================================================
 // Global variables
@@ -42,6 +44,7 @@ var int SpawnedMonsters;
 // overtime penalty
 var ePenaltyMode CurrentPenalty;
 var int PenaltyCount;
+
 
 //================================================
 // Game init
@@ -883,24 +886,39 @@ function ReduceDamage(out int Damage, Pawn Injured, Controller InstigatedBy, Vec
 {
 	Super.ReduceDamage(Damage, injured, InstigatedBy, HitLocation, Momentum, DamageType, DamageCauser);
 
-	if ( Damage > 0 && InstigatedBy != None && InfekktedPRI(InstigatedBy.PlayerReplicationInfo) != None && Injured != InstigatedBy.Pawn )
+	// Damage done from one pawn to another
+	if ( Damage > 0 && InstigatedBy != None && Injured != None && Injured != InstigatedBy.Pawn )
 	{
-		// Damage-based scoring !
-		if ( ToxikkMonster(Injured) != None )
+		// damage done by monster to player
+		if ( UTPlayerController(Injured.Controller) != None && ToxikkMonsterController(InstigatedBy) != None )
 		{
-			InfekktedPRI(InstigatedBy.PlayerReplicationInfo).AddDamage( Min(Damage, Injured.Health) );
+			// music event: 'enemy action'
+			UTPlayerController(InstigatedBy).ClientMusicEvent(0);
 		}
 
-		// Take care of team-damage !
-		// Since all players are on team 255, FriendlyFireScale must not have been taken into account (we forced it to 1.0 anyways)
-		else if ( Injured != None && InfekktedPRI(Injured.PlayerReplicationInfo) != None )
+		// damage done by player
+		if ( InfekktedPRI(InstigatedBy.PlayerReplicationInfo) != None )
 		{
-			// retaliate
-			if ( InstigatedBy.Pawn != None )
-				InstigatedBy.Pawn.TakeDamage(Damage * Conf.TeamDamageRetaliate, InstigatedBy, Injured.Location, Vect(0,0,0), DamageType);
+			// damage done to monster => score!
+			if ( ToxikkMonster(Injured) != None )
+			{
+				InfekktedPRI(InstigatedBy.PlayerReplicationInfo).AddDamage( Min(Damage, Injured.Health) );
+				// music event: 'enemy action' or 'kill'
+				if ( UTPlayerController(InstigatedBy) != None )
+					UTPlayerController(InstigatedBy).ClientMusicEvent(Damage >= Injured.Health ? 1 : 0);
+			}
 
-			// reduce
-			Damage *= Conf.TeamDamageDirect;
+			// damage done to other player => team-damage!
+			// Since all players are on team 255, FriendlyFireScale was not used
+			else if ( Injured != None && InfekktedPRI(Injured.PlayerReplicationInfo) != None )
+			{
+				// retaliate
+				if ( InstigatedBy.Pawn != None )
+					InstigatedBy.Pawn.TakeDamage(Damage * Conf.TeamDamageRetaliate, InstigatedBy, Injured.Location, Vect(0,0,0), DamageType);
+
+				// reduce
+				Damage *= Conf.TeamDamageDirect;
+			}
 		}
 	}
 }
