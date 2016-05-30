@@ -893,7 +893,7 @@ function ReduceDamage(out int Damage, Pawn Injured, Controller InstigatedBy, Vec
 		if ( UTPlayerController(Injured.Controller) != None && ToxikkMonsterController(InstigatedBy) != None )
 		{
 			// music event: 'enemy action'
-			UTPlayerController(InstigatedBy).ClientMusicEvent(0);
+			UTPlayerController(Injured.Controller).ClientMusicEvent(0);
 		}
 
 		// damage done by player

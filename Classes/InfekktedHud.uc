@@ -7,7 +7,9 @@
 //================================================================
 class InfekktedHud extends CRZHud;
 
-//======== Radar display config ========
+//========================================================
+//-- Radar -----------------------------------------------
+
 var float RadarSize;
 
 var Texture2D RadarBgTex;
@@ -35,7 +37,7 @@ var Texture2D RadarBossTex;
 var Color RadarBossColor;
 var float RadarBossSize;
 
-//======== Internal ========
+//internal
 var float RadarMaxDistSqrt;
 
 struct sRadarItem
@@ -54,6 +56,17 @@ struct sRadarItem
 };
 var array<sRadarItem> PrevRadarItems;
 var array<sRadarItem> RadarItems;
+
+
+//========================================================
+//-- Monsters remaining ----------------------------------
+
+
+//========================================================
+//-- Boss ------------------------------------------------
+
+var ToxikkMonster Boss;
+
 
 simulated event PostBeginPlay()
 {
@@ -105,8 +118,6 @@ simulated function RadarScanTimer() {}
 
 simulated event PostRender()
 {
-	local float XL, YL;
-
 	Super.PostRender();
 
 	if ( RadarMaxDistSqrt > 0 )
@@ -116,13 +127,11 @@ simulated event PostRender()
 
 	// the GRI will start replicating RemainingMonsters once once we reach the post-spawn phase
 	if ( InfekktedGRI(WorldInfo.GRI) != None && InfekktedGRI(WorldInfo.GRI).RemainingMonsters >= 0 )
-	{
-		Canvas.Font = class'CRZHud'.default.GlowFonts[0];
-		Canvas.SetDrawColor(255,255,255);
-		Canvas.TextSize("Remaining monsters: " $ InfekktedGRI(WorldInfo.GRI).RemainingMonsters, XL ,YL);
-		Canvas.SetPos(Canvas.ClipX - 16 - XL, Canvas.ClipY*0.2 - 16 - YL);
-		Canvas.DrawText("Remaining monsters: " $ InfekktedGRI(WorldInfo.GRI).RemainingMonsters);
-	}
+		DrawRemainingMonsters( InfekktedGRI(WorldInfo.GRI).RemainingMonsters );
+
+	// When boss is created on client-side, it sets itself automatically in var Boss
+	if ( Boss != None )
+		DrawBoss();
 }
 
 simulated function DrawRadar()
@@ -204,24 +213,35 @@ simulated function DrawRadar()
 	}
 }
 
-simulated function PostRenderBoss(ToxikkMonster Boss, Canvas C, Vector CamPos, Vector CamDir)
+simulated function DrawRemainingMonsters(int Count)
+{
+	local float XL, YL;
+
+	Canvas.Font = class'CRZHud'.default.GlowFonts[0];
+	Canvas.SetDrawColor(255,255,255);
+	Canvas.TextSize("Remaining monsters: " $ Count, XL ,YL);
+	Canvas.SetPos(Canvas.ClipX - 16 - XL, Canvas.ClipY*0.2 - 16 - YL);
+	Canvas.DrawText("Remaining monsters: " $ Count);
+}
+
+simulated function DrawBoss()
 {
 	local float XL, YL;
 	local int Health;
 
 	// Temporary stuff - we need a badass health bar
-	C.Font = class'CRZHud'.default.GlowFonts[0];
+	Canvas.Font = class'CRZHud'.default.GlowFonts[0];
 
-	C.SetDrawColor(255, 255-byte(255.f*float(Boss.Health)/float(Boss.HealthMax)), 0);
+	Canvas.SetDrawColor(255, 255-byte(255.f*float(Max(Boss.Health,0))/float(Boss.HealthMax)), 0);
 
-	C.TextSize("Boss HP: " $ Boss.HealthMax $ "/" $ Boss.HealthMax, XL, YL);
-	C.SetPos(C.ClipX - 16 - XL, C.ClipY/2);
-	C.DrawText("Boss HP:");
+	Canvas.TextSize("Boss HP: " $ Boss.HealthMax $ "/" $ Boss.HealthMax, XL, YL);
+	Canvas.SetPos(Canvas.ClipX - 16 - XL, Canvas.ClipY/2);
+	Canvas.DrawText("Boss HP:");
 
-	Health = ((Boss.IsInState('Dying') || Boss.Health < 0) ? 0 : Boss.Health);
-	C.TextSize(Health $ "/" $ Boss.HealthMax, XL, YL);
-	C.SetPos(C.ClipX - 16 - XL, C.ClipY/2);
-	C.DrawText(Health $ "/" $ Boss.HealthMax);
+	Health = Max(Boss.Health, 0);
+	Canvas.TextSize(Health $ "/" $ Boss.HealthMax, XL, YL);
+	Canvas.SetPos(Canvas.ClipX - 16 - XL, Canvas.ClipY/2);
+	Canvas.DrawText(Health $ "/" $ Boss.HealthMax);
 }
 
 defaultproperties

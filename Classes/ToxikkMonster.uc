@@ -319,7 +319,10 @@ simulated function PostNetBeginPlay()
 	if ( bIsBossMonster )
 	{
 		foreach WorldInfo.LocalPlayerControllers(class'PlayerController', PC)
-			PC.myHUD.AddPostRenderedActor(Self);
+		{
+			if ( InfekktedHUD(PC.myHUD) != None )
+				InfekktedHUD(PC.myHUD).Boss = Self;
+		}
 	}
 }
 
@@ -580,13 +583,6 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
     T=OrthoRotation(vForward2,vRight2,vUpward2);
  
    return(T);    
-}
-
-/** Delegate to HUD */
-simulated event PostRenderFor(PlayerController PC, Canvas C, Vector CamPos, Vector CamDir)
-{
-	if ( PC != None && InfekktedHud(PC.myHUD) != None )
-		InfekktedHud(PC.myHUD).PostRenderBoss(Self, C, CamPos, CamDir);
 }
 
 
