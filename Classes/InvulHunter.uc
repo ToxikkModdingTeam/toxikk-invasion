@@ -163,9 +163,6 @@ DefaultProperties
 	ShakeDamage=300
 	ShakeDistance=1500
 	
-	ZapAlpha=0.0
-	ZapID=1
-	
 	TorsoName=Bruiser
 	
 	// May or may not use
@@ -233,30 +230,29 @@ DefaultProperties
 	TipBone=sock_rgun
 	
 	ControllerClass=Class'InvulController'
-	
-	MissileClass=Class'InvulBall'
-	
-	bHasMelee=true
-	bHasRanged=true
 
+	bHasMelee=true
+	PunchDamage=75
+	AttackDistance=150
 	MeleeAttackAnims(0)=Attack2
 	MeleeAttackAnims(1)=Attack3
-	
-	PunchDamage=75
-	
-	Health=2500
-	
-	AttackDistance=150
+
+	bHasRanged=true
+	MissileClass=Class'InvulBall'
+	RangedDelay=0.0
 	RangedAttackDistance=2500
-	
 	RangedAttackAnims(0)=Attack1
 	RangedAttackAnims(1)=ShockAttack
-	
+
+	Health=2500
+
 	// Controls for the external zap filter
 	ZapParameter=ZapIntensity
 	NormalZap=0.02
 	InvulZap=0.75
-	
+	ZapAlpha=0.0
+	ZapID=1
+
 	StompSocket=sock_stomp
 	StompAnim=ShockWave
 	InvulAnim=Summon

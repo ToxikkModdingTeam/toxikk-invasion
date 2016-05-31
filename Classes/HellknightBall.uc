@@ -1,4 +1,4 @@
-class HellknightBall extends DoomProjectile;
+class HellknightBall extends MonsterProjectile;
 
 defaultproperties
 {
@@ -10,15 +10,12 @@ defaultproperties
 	
 	ExplosionSound=SoundCue'Doom3Monsters.HellKnight.VP.hk_fireexplode_cue'
 	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
-	
-	Speed=2000.000000
-	MaxSpeed=3000.000000
-	Damage=35.000000
-		
-	Physics=PHYS_Falling
-	MomentumTransfer=30000.000000
-	bRotationFollowsVelocity=True
-	AccelRate=3000.000000
-	
+
+	Damage=35
+	MomentumTransfer=30000
 	MyDamageType=Class'IFDmgType_HellknightBall'
+	
+	//TODO: use dropping projectiles only when we can handle the aiming correctly!
+	//Physics=PHYS_Falling
+	bRotationFollowsVelocity=True
 }

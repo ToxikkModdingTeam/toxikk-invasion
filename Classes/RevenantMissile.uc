@@ -1,4 +1,4 @@
-class RevenantMissile extends DoomProjectile;
+class RevenantMissile extends MonsterProjectile;
 
 simulated function PostBeginPlay()
 {
@@ -19,31 +19,21 @@ defaultproperties
 	ExplosionDecal=MaterialInstanceTimeVarying'RocketLauncher.Decals.MITV_WP_RocketLauncher_Impact_Decal'
 	DecalWidth=128.000000
 	DecalHeight=128.000000
-	ProjectileLightClass=Class'Cruzade.CRZRocketLight'
-	ExplosionLightClass=Class'Cruzade.CRZRocketLauncherMuzzleFlashLight'
+	ProjectileLightClass=Class'CRZRocketLight'
+	ExplosionLightClass=Class'CRZRocketLauncherMuzzleFlashLight'
 	bCheckProjectileLight=True
 	CheckRadius=42.000000
-	Speed=1800.000000
-	MaxSpeed=2700.000000
-	DamageRadius=220.000000
-	MyDamageType=Class'Cruzade.CRZDmgType_RocketLauncher'
-	Begin Object Name=CollisionCylinder Archetype=CylinderComponent'Cruzade.Default__CRZProjectile:CollisionCylinder'
-		CollisionHeight=0.000000
-		CollisionRadius=0.000000
-		ReplacementPrimitive=None
-		Name="CollisionCylinder"
-	End Object
-	CylinderComponent=CollisionCylinder
-	Components(0)=CollisionCylinder
-	LifeSpan=6.000000
-	CollisionComponent=CollisionCylinder
-   
-	Damage=75.000000
-	MomentumTransfer=2000.000000
-	BaseTrackingStrength=1.000000
-	HomingTrackingStrength=16.000000
+
+	MaxSpeed=1600
+	AccelRate=2200
+
+	Damage=70
+	DamageRadius=200
+	MomentumTransfer=2000
+	MyDamageType=Class'IFDmgType_MonsterMissile'
+
 	ProjFlightTemplate=ParticleSystem'Doom3Monsters.Revenant.rev_rocket_particles'
-   
+
 	// Missile variables
 	ProjScale=2.5
 	ProjRotation=(Yaw=32768)

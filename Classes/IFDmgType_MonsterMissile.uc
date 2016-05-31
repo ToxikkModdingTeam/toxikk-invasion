@@ -1,14 +1,18 @@
 //================================================================
-// Infekkted.IFDmgType_Melee
+// Infekkted.IFDmgType_MonsterMissile
 // ----------------
 // ...
 // ----------------
 // by Chatouille
 //================================================================
-class IFDmgType_Melee extends IFDmgType_Monster;
+class IFDmgType_MonsterMissile extends IFDmgType_Monster;
 
 defaultproperties
 {
-	bNeverGibs=true
-	VehicleDamageScaling=0.700000
+	KDeathUpKick=400
+	bThrowRagdoll=true
+	GibPerterbation=0.15
+	AlwaysGibDamageThreshold=99
+
+	VehicleMomentumScaling=4.0
 }

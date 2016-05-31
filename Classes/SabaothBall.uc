@@ -8,12 +8,9 @@ defaultproperties
 	ProjFlightTemplate=ParticleSystem'Doom3Monsters.Sabaoth.Particles.bfg_ball_particles'
 	ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
 	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
-	
-	Speed=100.000000
-	MaxSpeed=100.000000
-	Damage=15.000000
-	
-	ProjScale=1.5
 
+	Damage=35.000000
 	MyDamageType=Class'IFDmgType_HellknightBall'
+
+	ProjScale=1.5
 }

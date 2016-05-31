@@ -1,8 +1,48 @@
-class DoomProjectile extends CRZProjectile;
+//================================================================
+// Infekkted.MonsterProjectile
+// ----------------
+// ...
+// ----------------
+// by ZedekThePD & Chatouille
+//================================================================
+class MonsterProjectile extends CRZProjectile;
 
 // Variables for the emitter
 var 		float 		ProjScale;
 var			rotator		ProjRotation;
+
+/**
+ * Supports accelerating projectiles
+ * - Speed = initial speed
+ * - AccelRate = speed gained per second
+ * - MaxSpeed = maximum speed (0 means no limit)
+ * 
+ * TODO: better "Dropping" projectiles support
+ * - DropFactor = scale factor for gravity calculation, to drop more/less
+ *
+ * TODO: homing support (with a Actor target, or with a Vector target)
+ * - ActorTarget = homing target actor
+ * - PointTarget = homing target point in space if no actor
+ * - TravelFriction = the higher, the more it can turn towards target (see LootOrb)
+ */
+simulated function vector GetProjectileMoveFor(float dt)
+{
+	local Vector OldVel;
+
+	OldVel = Velocity;
+
+	Speed += AccelRate*dt;
+	if ( MaxSpeed > 0 && Speed > MaxSpeed )
+		Speed = MaxSpeed;
+
+	Velocity = Speed*Normal(Velocity);
+
+	if ( Physics == PHYS_Falling )
+		Velocity.Z += dt * GetGravityZ()*2;
+
+	//why are they taking the middle ??
+	return (OldVel+Velocity) * dt / 2.f;
+}
 
 // No team colors
 simulated event CreateProjectileLight()
@@ -96,38 +136,33 @@ simulated State WaterFlight
 defaultproperties
 {
 	ProjScale=5.0
-	
-bUseExplosionRadialBlur=False
-   TeamIndex=1
-   ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
-   ProjWaterExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_UnderWaterImpact'
-   WaterSplashSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
-   ExplosionSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_ImpactCue'
-   
-   ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
-   ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
-   MaxEffectDistance=7000.000000
 
-   bCheckProjectileLight=True
-   CheckRadius=26.000000
-   AccelRate=3000.000000
-   Speed=3500.000000
-   MaxSpeed=5000.000000
-   Damage=35.000000
-   
-   MyDamageType=Class'Cruzade.CRZDmgType_Scion_Plasma'
-   
-   Begin Object Name=CollisionCylinder
-      CollisionHeight=0.000000
-      CollisionRadius=0.000000
-      ReplacementPrimitive=None
-      Name="CollisionCylinder"
-      ObjectArchetype=CylinderComponent'Cruzade.Default__CRZProjectile:CollisionCylinder'
-   End Object
-   CylinderComponent=CollisionCylinder
-   Components(0)=CollisionCylinder
-   
-   DrawScale=1.100000
-   LifeSpan=3.000000
-   CollisionComponent=CollisionCylinder
+	bUseExplosionRadialBlur=False
+	TeamIndex=1
+
+	ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
+	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
+	ProjWaterExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_UnderWaterImpact'
+
+	WaterSplashSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
+	ExplosionSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_ImpactCue'
+
+	ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
+
+	MaxEffectDistance=7000.000000
+
+	bCheckProjectileLight=True
+	CheckRadius=26.000000
+
+	//NOTE: don't neglect acceleration, with a slow start and quick acceleration to max it's very good especially for netcode
+	// try to keep Speed at 500, and calc AccelRate=(MaxSpeed-Speed)*2
+	Speed=500
+	MaxSpeed=1700
+	AccelRate=2400
+
+	Damage=35
+	MyDamageType=Class'IFDmgType_Monster'   //fallback
+
+	DrawScale=1.100000
+	LifeSpan=6.000000
 }

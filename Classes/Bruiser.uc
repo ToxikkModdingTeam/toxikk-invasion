@@ -47,10 +47,6 @@ DefaultProperties
 		bDrawBoundingBox=true
     End Object
 	
-	// Bruiser walks while attacking
-	bWalkingAttack=true
-	bWalkingRanged=true
-	
 	Mass=2000
 
 	// SKELETAL MESH
@@ -77,15 +73,14 @@ DefaultProperties
     End Object
     Mesh=MainMesh
 
-	// How fast we run
     GroundSpeed=150.0
 
 	PainSoundChance=0.5
-	
+
 	FootstepSound=SoundCue'Doom3Monsters.Bruiser.VP.bruiser_fs_cue'
-	
+
 	PainSound=SoundCue'Doom3Monsters.Bruiser.VP.bruiser_pain_cue'
-	
+
 	SightSound=SoundCue'Doom3Monsters.Bruiser.VP.bruiser_sight_cue'
 	DeathSound=SoundCue'Doom3Monsters.Bruiser.VP.bruiser_death_cue'
 	AttackSound=None
@@ -96,27 +91,28 @@ DefaultProperties
 	TipBoneLeft=sock_lgun
 	TipBoneRight=sock_rgun
 	TipBone=sock_rgun
-	
-	MissileClass=Class'Cruzade.CRZProj_ScionRifle'
-	
-	bHasMelee=true
-	bHasRanged=true
 
-	MeleeAttackAnims(0)=Attack1
-	MeleeAttackAnims(1)=Attack2
-	
+	bHasMelee=true
 	PunchDamage=45
-	
-	Health=750
-	
 	AttackDistance=150
+
+	bHasRanged=true
+	MissileClass=Class'BruiserBall'
 	RangedAttackDistance=2500
-	
 	RangedAttackAnims(0)=RangedAttack1
 	RangedAttackAnims(1)=RangedAttack2
 	// RangedAttackAnims(2)=RangedAttack3
-	
+
+	// Bruiser walks while attacking
+	bWalkingAttack=true
+	bWalkingRanged=true
+
+	MeleeAttackAnims(0)=Attack1
+	MeleeAttackAnims(1)=Attack2
+
+	Health=750
+
 	RunningAnim=Walk
-	
+
 	SightAnims(0)=Sight
 }

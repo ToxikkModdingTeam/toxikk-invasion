@@ -1,14 +1,17 @@
 //================================================================
-// Infekkted.IFDmgType_Melee
+// Infekkted.MancubusMissile
 // ----------------
 // ...
 // ----------------
 // by Chatouille
 //================================================================
-class IFDmgType_Melee extends IFDmgType_Monster;
+class MancubusMissile extends RevenantMissile;
 
 defaultproperties
 {
-	bNeverGibs=true
-	VehicleDamageScaling=0.700000
+	Damage=80
+	DamageRadius=220
+	MomentumTransfer=2500
+
+	ProjScale=2.85
 }

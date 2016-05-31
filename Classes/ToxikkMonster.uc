@@ -1188,7 +1188,7 @@ event Bump(Actor Other, PrimitiveComponent OtherComp, Vector HitNormal)
 	if ( Role == ROLE_Authority && bIsLunging && Pawn(Other)!=None && Controller!=None && Other == ToxikkMonsterController(Controller).Target )
 	{
 		bIsLunging = false;
-		Pawn(Other).TakeDamage(LungeDamage, Controller, Other.Location, HitNormal, None);
+		Pawn(Other).TakeDamage(LungeDamage, Controller, Other.Location, HitNormal, class'IFDmgType_Melee');
 	}
 	Super.Bump(Other, OtherComp, HitNormal);
 }
@@ -1301,7 +1301,7 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);
 
 	// say "ouch"
-	if ( FRand() >= PainSoundChance )
+	if ( PainSound != None && FRand() >= PainSoundChance )
 		PlaySound(PainSound);
 
 	// spill some blood
@@ -1426,7 +1426,7 @@ DefaultProperties
 	
 	SightRadius=500000
 	
-	RangedDelay=2.0
+	RangedDelay=1.0
 	
 	PreRotateModifier=2.0
 	

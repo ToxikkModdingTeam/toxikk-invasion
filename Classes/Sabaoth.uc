@@ -159,23 +159,20 @@ DefaultProperties
 	TipBoneLeft=sock_lgun
 	TipBoneRight=sock_lgun
 	TipBone=sock_lgun
-	
-	MissileClass=Class'SabaothBall'
-	
-	bHasMelee=true
-	bHasRanged=true
 
+	bHasMelee=true
 	MeleeAttackAnims(0)=Attack2
-	
 	PunchDamage=45
-	
-	Health=2500
-	
+
+	bHasRanged=true
+	MissileClass=Class'SabaothBall'
+	RangedDelay=0.0
 	AttackDistance=150
 	RangedAttackDistance=2500
-	
 	RangedAttackAnims(0)=Attack1
-	
+
+	Health=2500
+
 	RunningAnim=Travel
 	
 	SightAnims(0)=Sight

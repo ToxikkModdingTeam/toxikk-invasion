@@ -37,41 +37,36 @@ DefaultProperties
     End Object
     Mesh=MainMesh
 
-	// How fast we run
     GroundSpeed=100.0
 
 	PainSoundChance=0.5
-	
+
 	FootstepSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_step_cue'
-	
+
 	PainSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_pain_cue'
-	
+
 	SightSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_sight_cue'
 	DeathSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_die_cue'
 	AttackSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_chatter_combat_cue'
 	FireSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_fire_cue'
 	ChatterSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_chatter_combat_cue'
 	IdleSound=SoundCue'Doom3Monsters.Mancubus.VP.fatty_chatter_cue'
-	
+
 	TipBoneLeft=sock_lgun
 	TipBoneRight=sock_rgun
 	TipBone=sock_rgun
-	
-	MissileClass=Class'Cruzade.CRZProj_RocketLauncher'
-	
-	bHasMelee=true
-	bHasRanged=true
 
+	bHasMelee=true
 	MeleeAttackAnims(0)=Attack1
-	
 	PunchDamage=30
+	AttackDistance=200
+
+	bHasRanged=true
+	MissileClass=Class'MancubusMissile'
+	RangedAttackDistance=2500
+	RangedAttackAnims(0)=MultiFire
 	
 	Health=750
-	
-	AttackDistance=200
-	RangedAttackDistance=2500
-	
-	RangedAttackAnims(0)=MultiFire
 	
 	RunningAnim=Walk
 	
