@@ -1038,6 +1038,23 @@ function SendToSpec(UTPlayerController PC)
 
 
 //================================================
+// Spectating rules
+//================================================
+
+function bool CanSpectate(PlayerController Viewer, PlayerReplicationInfo ViewTarget)
+{
+    return ( !IsInState('MatchInProgress') || (Viewer != None && Viewer.PlayerReplicationInfo != None) );
+}
+
+// function called when using LeftClick while spectating
+function ViewObjective(PlayerController PC)
+{
+    if ( PC != None )
+        PC.ServerViewNextPlayer();
+}
+
+
+//================================================
 // Skill class and XP
 //================================================
 

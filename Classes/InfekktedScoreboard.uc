@@ -268,6 +268,8 @@ function UpdateRow(out sb_Row PRow, CRZPlayerReplicationInfo PRI)
 
 	UpdateField(PRow, "LVL", class'CRZHud'.static.FormatInteger(int(PRI.SkillClass), 2));
 
+	UpdateField(PRow, "STATUS", PRI.bOutOfLives ? class'CRZHud'.static.FormatHTMLHexColor("DEAD",class'CRZHud'.default.UIRedHtmlHexColor) : class'CRZHud'.static.FormatHTMLHexColor("OK",class'CRZHud'.default.UIGreenHtmlHexColor));
+
 	UpdateField(PRow, "SCORE", class'CRZHud'.static.FormatHTMLHexColor( PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(int(PRI.Score)) , class'CRZHud'.default.UIWhiteHtmlHexColor));
 
 	UpdateField(PRow, "DEATH", PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(PRI.Deaths));
@@ -322,6 +324,7 @@ defaultproperties
 	Columns.Add(( Name="FROM",  Align=ALIGN_Left,   MinSize=3 ))
 	Columns.Add(( Name="CLAN",  Align=ALIGN_Left,   MinSize=3 ))
 	Columns.Add(( Name="LVL",   Align=ALIGN_Center, MinSize=3, bFieldsHTML=true ))
+	Columns.Add(( Name="STATUS",Align=ALIGN_Center, MinSize=4, bFieldsHTML=true ))
 	Columns.Add(( Name="SCORE", Align=ALIGN_Center, MinSize=5, bFieldsHTML=true ))
 	Columns.Add(( Name="DEATH", Align=ALIGN_Center, MinSize=3, bFieldsHTML=true ))
 	Columns.Add(( Name="MXP",   Align=ALIGN_Right,  MinSize=5, bFieldsHTML=true ))
