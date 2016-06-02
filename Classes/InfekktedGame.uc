@@ -138,6 +138,12 @@ function TimeUp()
 	// done in ze States
 }
 
+//WARNING: Always call Global.Timer from states when not calling Super's
+function Timer()
+{
+	BroadcastHandler.UpdateSentText();
+}
+
 State PreWaveCountdown
 {
 	function BeginState(Name PrevStateName)
@@ -268,6 +274,8 @@ State MatchInProgress
 	{
 		local PlayerController PC;
 		local CRZPawn P;
+
+		Global.Timer();
 
 		if ( SpawnedMonsters < AdjustedTotalMonsters )
 			SpawnMonsters();
@@ -534,6 +542,7 @@ State BossInProgress extends MatchInProgress
 	{
 		if ( GRI.bStopCountDown )
 		{
+			Global.Timer();
 			if ( SpawnBoss() )
 				GRI.bStopCountDown = false;
 		}

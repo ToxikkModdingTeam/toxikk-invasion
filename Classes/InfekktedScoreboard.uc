@@ -268,7 +268,7 @@ function UpdateRow(out sb_Row PRow, CRZPlayerReplicationInfo PRI)
 
 	UpdateField(PRow, "LVL", class'CRZHud'.static.FormatInteger(int(PRI.SkillClass), 2));
 
-	UpdateField(PRow, "STATUS", PRI.bOutOfLives ? class'CRZHud'.static.FormatHTMLHexColor("DEAD",class'CRZHud'.default.UIRedHtmlHexColor) : class'CRZHud'.static.FormatHTMLHexColor("OK",class'CRZHud'.default.UIGreenHtmlHexColor));
+	UpdateField(PRow, "STATUS", PRI.bOnlySpectator ? "SPEC" : (PRI.bOutOfLives ? class'CRZHud'.static.FormatHTMLHexColor("DEAD",class'CRZHud'.default.UIRedHtmlHexColor) : class'CRZHud'.static.FormatHTMLHexColor("OK",class'CRZHud'.default.UIGreenHtmlHexColor)) );
 
 	UpdateField(PRow, "SCORE", class'CRZHud'.static.FormatHTMLHexColor( PRI.bOnlySpectator ? "---" : class'CRZHud'.static.FormatInteger(int(PRI.Score)) , class'CRZHud'.default.UIWhiteHtmlHexColor));
 

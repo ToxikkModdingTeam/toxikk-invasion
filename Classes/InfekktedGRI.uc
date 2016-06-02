@@ -37,15 +37,7 @@ simulated event PostBeginPlay()
 	Super.PostBeginPlay();
 
 	if ( WorldInfo.NetMode == NM_Client )
-	{
 		RemoveUnsupportedActors();
-		/*
-		if ( WorldInfo.NetMode == NM_Client )
-		{
-			SetTimer(1.0, false, 'RemoveUnsupportedActors');
-		}
-		*/
-	}
 }
 
 simulated function RemoveUnsupportedActors()
@@ -67,9 +59,6 @@ simulated function RemoveUnsupportedActors()
 			if(!MI.IsActorSupportedByMapAndGametype(A, class'InfekktedGame' ))	
 				Supported = false;
 		}
-
-		if ( A.IsA('CRZAreaDominationPoint') )
-			`Log("[D] DOMPOINT Supported=" $ Supported);
 
 		if(!Supported)
 		{
