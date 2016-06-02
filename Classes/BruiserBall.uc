@@ -9,17 +9,17 @@ class BruiserBall extends MonsterProjectile;
 
 defaultproperties
 {
-	ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
-
 	ProjectileLightClass=class'Cruzade.CRZScionLaserProjectileLight'
 	ExplosionLightClass=class'Cruzade.CRZScionRifleMuzzleFlashLight'
+
+	ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
 
 	ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
 	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
 	ProjWaterExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_UnderWaterImpact'
 
 	ExplosionSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_ImpactCue'
-	WaterSplashSound = SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
+	WaterSplashSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
 
 	Speed=1000
 	MaxSpeed=2500

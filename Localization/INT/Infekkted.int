@@ -10,11 +10,35 @@ EndOfMatchRulesTemplateStr_Time="Monsters invasion co-op gamemode"
 [GFxCRZFrontEnd_GameModes]
 ListOptions=(OptionName="Infekkted.InfekktedGame",OptionLabel="Infekkted",OptionDesc="Monsters invasion co-op gamemode")
 
-[IFDmgType_HellknightBall]
+[IFDmgType_HellknightBall_bakup]
 DeathString="`o was incinerated by a hell knight"
 FemaleSuicide="`o was incinerated by a hell knight"
 MaleSuicide="`o was incinerated by a hell knight"
 VictimString="(HELL KNIGHT)"
+
+[IFDmgType_Monster]
+DeathString="`o was killed by a monster"
+FemaleSuicide="`o was killed by a monster"
+MaleSuicide="`o was killed by a monster"
+VictimString="(MONSTER)"
+
+[IFDmgType_Melee]
+DeathString="`o was shredded by a monster"
+FemaleSuicide="`o was shredded by a monster"
+MaleSuicide="`o was shredded by a monster"
+VictimString="(MELEE)"
+
+[IFDmgType_HellknightBall]
+DeathString="`o was melted by monster plasma"
+FemaleSuicide="`o was melted by monster plasma"
+MaleSuicide="`o was melted by monster plasma"
+VictimString="(PLASMA)"
+
+[IFDmgType_MonsterMissile]
+DeathString="`o was blown up by a missile"
+FemaleSuicide="`o was blown up by a missile"
+MaleSuicide="`o was blown up by a missile"
+VictimString="(MISSILE)"
 
 [IFDmgType_Overtime]
 DeathString="`o ran out of time"

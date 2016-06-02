@@ -140,15 +140,6 @@ defaultproperties
 	bUseExplosionRadialBlur=False
 	TeamIndex=1
 
-	ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
-	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
-	ProjWaterExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_UnderWaterImpact'
-
-	WaterSplashSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
-	ExplosionSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_ImpactCue'
-
-	ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
-
 	MaxEffectDistance=7000.000000
 
 	bCheckProjectileLight=True

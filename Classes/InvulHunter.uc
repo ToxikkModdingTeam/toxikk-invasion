@@ -202,7 +202,7 @@ DefaultProperties
 		LightingChannels=(BSP=true,Static=true)
 		LightEnvironment=MyLightEnvironment
 		bHasPhysicsAssetInstance=true
-		PhysicsAsset=PhysicsAsset'Doom3Monsters.Bruiser.bruiser_mesh_Physics'
+		PhysicsAsset=PhysicsAsset'Doom3Monsters.InvulHunter.invul_ragdoll'
 		PhysicsWeight=0.0
 		Translation=(Z=-16.0)
     End Object
