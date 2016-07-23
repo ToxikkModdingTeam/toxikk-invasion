@@ -39,4 +39,6 @@ DefaultProperties
 	IdleSound=SoundCue'Doom3Monsters.Tick.VP.tick_chirp_cue'
 
 	PunchDamage=10
+	
+	MonsterName = "Tick"
 }

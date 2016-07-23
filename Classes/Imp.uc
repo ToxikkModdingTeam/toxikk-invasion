@@ -129,4 +129,6 @@ DefaultProperties
 	RunningAnim=Walk
 	
 	SightAnims(0)=Sight
+	
+	MonsterName = "Imp"
 }

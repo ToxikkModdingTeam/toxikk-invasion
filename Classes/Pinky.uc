@@ -80,4 +80,6 @@ DefaultProperties
 	bUseAimOffset=false
 	
 	Mass=300
+	
+	MonsterName = "Pinky"
 }

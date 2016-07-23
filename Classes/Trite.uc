@@ -78,4 +78,6 @@ DefaultProperties
 	LungeChance=0.0
 	// Rotating the trite's torso would be a disaster
 	bUseAimOffset=false
+	
+	MonsterName = "Trite"
 }

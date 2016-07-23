@@ -163,4 +163,6 @@ DefaultProperties
 	WalkingAnims(4)=Walk05
 	
 	SightAnims(0)=Sight
+	
+	MonsterName="Fat Zombie"
 }

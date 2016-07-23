@@ -134,4 +134,6 @@ DefaultProperties
 	SightAnims(0)=Roar
 	
 	Mass=2000
+	
+	MonsterName="Hell Knight"
 }

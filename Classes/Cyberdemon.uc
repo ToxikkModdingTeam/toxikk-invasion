@@ -184,4 +184,6 @@ DefaultProperties
 	SightRadius=1.0
 	
 	Mass=10000
+	
+	MonsterName="Cyberdemon"
 }

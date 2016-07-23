@@ -18,6 +18,7 @@ var		SkeletalMeshComponent			FakeComponent;
 // How quickly we face the player
 var		int								FaceRate;
 
+var		string							MonsterName;
 
 //=============================================================================
 //--ATTACKING------------------------------------------------------------------
@@ -1317,6 +1318,14 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 		BloodMomentum.Z *= 0.5;
 }
 
+static function string GetMonsterName()
+{
+	if (default.MonsterName ~= "")
+		return string(default.Class);
+	else
+		return default.MonsterName;
+}
+
 DefaultProperties
 {
 	BossYaw=32768
@@ -1448,4 +1457,6 @@ DefaultProperties
 	bStopAtLedges=false
 	
 	FaceRate=1000
+	
+	MonsterName=""
 }
