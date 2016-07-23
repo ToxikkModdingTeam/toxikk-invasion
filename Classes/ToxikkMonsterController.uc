@@ -7,7 +7,6 @@ Class ToxikkMonsterController extends AIController;
 var Actor Target, RoamTarget;
 var Vector TempDest;
 var vector nextlocation;
-
 // How far the player can go before we lose sight of him
 var float PerceptionDistance;
 var float DistanceToPlayer;
@@ -32,6 +31,13 @@ function vector PosPlusHeight(vector Pos)
 	Pos.Z += CH/2;
 	
 	return Pos;
+}
+
+event PostBeginPlay()
+{
+    super.PostBeginPlay();
+ 
+    NavigationHandle = new(self) class'NavigationHandle';
 }
 
 // Possess a pawn
@@ -81,6 +87,9 @@ function float GetInFront(actor A, actor B)
 // Acquire a new target
 function LockOnTo(Pawn Seen)
 {
+	if (Seen == None)
+		return;
+		
 	if (Target != Seen)
 	{
 		// Never lock onto other monsters, or ourselves
@@ -114,10 +123,16 @@ state PreAttack
 		{
 			Pawn.Acceleration = vect(0,0,1);
 			
+			// Lost a target, go back to roaming around
 			if (Target == None)
 				GotoState('Wander');
 				
-			SetFocalPoint(Target.Location);
+			//SetFocalPoint(Target.Location);
+			
+			DesiredRot.Pitch = Pawn.Rotation.Pitch;
+			DesiredRot.Roll = Pawn.Rotation.Roll;
+			DesiredRot.Yaw = Pawn.Rotation.Yaw + ToxikkMonster(Pawn).FaceRate;
+			Pawn.SetRotation(DesiredRot);
 			Sleep(0.01);
 		}
 		
@@ -431,6 +446,41 @@ function bool ExtraRangedException()
 	return true;
 }
 
+// Returns whether or not two actors are on the same level
+static function bool OnSameLevel(Actor Parent, Actor Targ)
+{
+	if (Pawn(Targ) != None)
+		return Pawn(Parent).Controller.CanSee(Pawn(Targ)) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
+	else
+		return Parent.FastTrace(Targ.Location,Parent.Location) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
+}
+
+// Whether or not we should do a melee attack
+static function bool CanDoMelee(Pawn Parent, Pawn Targ)
+{
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).AttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0*/ Parent.Controller.CanSee(Targ) && ToxikkMonster(Parent).bHasMelee;
+}
+
+// Whether or not we should do a ranged attack
+static function bool CanDoRanged(Pawn Parent, Pawn Targ)
+{
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.Controller.CanSee(Targ) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+}
+
 state ChasePlayer
 {	
 	function Tick(float Delta)
@@ -446,20 +496,22 @@ state ChasePlayer
 	
     While (Pawn != none && Target != None)
     {
-		// Allow trace too, because that means we're pretty much on the same level
-		// Run some Z checks just to be sure they're not up on a ledge or something
-		if (NavigationHandle.ActorReachable(Target) || ActorReachable(Target) || (FastTrace(Target.Location,Pawn.Location) && Target.Location.Z < Pawn.Location.Z+100 && Target.Location.Z > Pawn.Location.Z - 25))
+		//class'NavmeshPath_Toward'.static.TowardGoal(NavigationHandle,Target);
+        //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
+				
+		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
+		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
 			
 			// CAN WE MELEE ATTACK?
-			if (DistanceToPlayer <= ToxikkMonster(Pawn).AttackDistance && GetInFront(Pawn, Target) > 0.0 && ToxikkMonster(Pawn).bHasMelee)
+			if ( CanDoMelee(Pawn,Pawn(Target)) )
 			{
 				GotoState('Attacking');
 				break;
 			}
 			// OTHERWISE, CAN WE RANGED ATTACK?
-			else if (DistanceToPlayer <= ToxikkMonster(Pawn).RangedAttackDistance && ToxikkMonster(Pawn).bHasRanged && FastTrace(Target.Location, PosPlusHeight(Pawn.Location)) && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException())
+			else if ( CanDoRanged(Pawn,Pawn(Target)) )
 			{
 				GotoState('PreAttack');
 				break;
@@ -473,33 +525,36 @@ state ChasePlayer
 			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2));
 			if (MoveTarget != none)
 			{
-				//Worldinfo.Game.Broadcast(self, "Moving toward Player");
-
 				DistanceToPlayer = VSize(MoveTarget.Location - Pawn.Location);
 				tmp_Dist = VSize(Target.Location - Pawn.Location);
 				
 				// CAN WE MELEE ATTACK?
-				if (tmp_Dist <= ToxikkMonster(Pawn).AttackDistance && GetInFront(Pawn, Target) > 0.0 && ToxikkMonster(Pawn).bHasMelee)
+				if ( CanDoMelee(Pawn,Pawn(Target)) )
 				{
 					GotoState('Attacking');
 					break;
 				}
 				// OTHERWISE, CAN WE RANGED ATTACK?
-				else if (tmp_Dist <= ToxikkMonster(Pawn).RangedAttackDistance && GetInFront(Pawn, Target) > 0.0 && ToxikkMonster(Pawn).bHasRanged && FastTrace(Target.Location, Pawn.Location) && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException())
+				else if ( CanDoRanged(Pawn,Pawn(Target)) )
 				{
 					GotoState('RangedAttack');
 					break;
 				}
 				else
 				{
+					// If the player's within 200 units then just move toward them
 					if (tmp_Dist < 200)
 						MoveToward(Target, Target, 20.0f);
+					// If the movement target's destination is less than 200
 					else if (DistanceToPlayer < 200)
 						MoveToward(MoveTarget, Target, 20.0f);
+					// Otherwise just move normally
 					else
 						MoveToward(MoveTarget, MoveTarget, 20.0f);	
 				}
 			}
+			else
+                MoveToward(Target, Target, 20.0f);
 		}
 		
 		if (Target != None)
@@ -509,12 +564,16 @@ state ChasePlayer
 				Target = None;
 		}
 
-		Sleep(0.5);
+		Sleep(0.1);
 		
 		// NO TARGET? Idle
 		if (Target == None)
 			GotoState('Wander');
     }
+	
+	// NO TARGET? Idle
+	if (Target == None)
+		GotoState('Wander');
 }
 
 // Optional things can be done when a state begins

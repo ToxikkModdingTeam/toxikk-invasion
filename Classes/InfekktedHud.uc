@@ -75,6 +75,15 @@ simulated event PostBeginPlay()
 	SetTimer(RadarUpdateInterval, true, 'UpdateRadar');
 }
 
+function UpdateHUD(float DeltaTime)
+{
+	super.UpdateHUD(DeltaTime);
+	if (HudMovie != None)
+	{
+		HudMovie.PlayerStatsMC.SetVisible(false);
+	}	
+}
+
 simulated function UpdateRadar()
 {
 	local Pawn P;

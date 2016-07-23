@@ -15,6 +15,9 @@ Class ToxikkMonster extends UDKPawn;
 var		LightEnvironmentComponent		LEC;
 var		SkeletalMeshComponent			FakeComponent;
 
+// How quickly we face the player
+var		int								FaceRate;
+
 
 //=============================================================================
 //--ATTACKING------------------------------------------------------------------
@@ -92,7 +95,7 @@ var float ChatterTime;
 //--ANIMATIONS-----------------------------------------------------------------
 
 var AnimNodePlayCustomAnim  CustomAnimator, WalkSwitch;
-var AnimNodeBlend CrawlBlender;
+var AnimNodeBlend CrawlBlender, DeathBlender;
 
 /** Monster has a melee attack */
 var bool bHasMelee;
@@ -338,6 +341,7 @@ simulated event PostInitAnimTree(SkeletalMeshComponent SkelComp)
 		TorsoAimer = AnimNodeAimOffset(SkelComp.FindAnimNode('AimNode'));
 		CustomSeq = AnimNodeSequence(SkelComp.FindAnimNode('CustomSeq'));
 		CrawlBlender = AnimNodeBlend(SkelComp.FindAnimNode('CrawlBlend'));
+		DeathBlender = AnimNodeBlend(SkelComp.FindAnimNode('DeadBlend'));
 		
 		// Set default walk anim
 		WalkSwitch.PlayCustomAnim(RunningAnim,1.0,,,true);
@@ -538,7 +542,7 @@ simulated function Tick(float Delta)
 }
 
 // Is the actor in front of us?
-function float GetInFront(actor A, actor B)
+static function float GetInFront(actor A, actor B)
 {
 	local vector aFacing,aToB;
 	
@@ -637,6 +641,9 @@ simulated function PlayDying(class<DamageType> DamageType, vector HitLoc)
 	bReplicateMovement = false;
 	bTearOff = true;
 	bPlayedDeath = true;
+	
+	// STOP THE ANIMATION
+	DeathBlender.SetBlendTarget(1.0,0.0);
 
 	HitDamageType = DamageType; // these are replicated to other clients
 	TakeHitLocation = HitLoc;
@@ -1381,8 +1388,8 @@ DefaultProperties
 	ControllerClass=class'ToxikkMonsterController'
 
 	// Monsters can't jump
-    bJumpCapable=false
-    bCanJump=false
+    bJumpCapable=true
+    bCanJump=true
 	
 	DrawScale=1.25
 	
@@ -1439,4 +1446,6 @@ DefaultProperties
 	
 	bAvoidLedges=false
 	bStopAtLedges=false
+	
+	FaceRate=1000
 }
