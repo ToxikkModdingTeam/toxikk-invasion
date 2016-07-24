@@ -1,0 +1,10 @@
+
+`define DEBUG_MONSTER_STATES
+
+`if(`DEBUG_MONSTER_STATES)
+	`define DEBUG_MONSTER_STATE `Log("[D] Entering state " $ String(GetStateName()) $ " (from " $ Prev $ ")");
+	`define DEBUG_MONSTER_STATE_DECL function BeginState(Name Prev) { `DEBUG_MONSTER_STATE }
+`else
+	`define DEBUG_MONSTER_STATE
+	`define DEBUG_MONSTER_STATE_DECL
+`endif

@@ -102,6 +102,7 @@ function LockOnTo(Pawn Seen)
 //--ROTATING TOWARD OUR TARGET AND PREPARING FOR AN ATTACK, USED FOR RANGED
 state PreAttack
 {
+	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		BeginNotify("PreAttack");
 		Pawn.Acceleration = vect(0,0,1);
@@ -143,6 +144,7 @@ state PreAttack
 //--DOING OUR LUNGE ATTACK---------------------------
 state Lunging
 {
+	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -190,7 +192,8 @@ state Lunging
 
 // PLAYING SIGHT ANIM
 state Sight
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -226,6 +229,7 @@ state Sight
 // IN THIS STATE, WE'RE DOING NOTHING
 state Idling
 {
+	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -257,6 +261,7 @@ state Idling
 // ROAM AND LOOK FOR A PLAYER
 auto state Wander
 {
+	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -303,6 +308,7 @@ auto state Wander
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
 state Attacking
 {
+	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -352,7 +358,8 @@ function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -432,7 +439,8 @@ function bool ExtraRangedException()
 }
 
 state ChasePlayer
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);

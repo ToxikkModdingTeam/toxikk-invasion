@@ -54,7 +54,6 @@ struct sRadarItem
 		Alpha=1.0
 	}
 };
-var array<sRadarItem> PrevRadarItems;
 var array<sRadarItem> RadarItems;
 
 
@@ -80,8 +79,12 @@ simulated function UpdateRadar()
 	local Pawn P;
 	local int i;
 
-	PrevRadarItems = RadarItems;
-	RadarItems.Length = 0;
+	for ( i=0; i<RadarItems.Length; i++ )
+	{
+		if ( !RadarItems[i].bShowing )
+			RadarItems.Remove(i--,1);
+	}
+
 	foreach WorldInfo.AllPawns(class'Pawn', P)
 	{
 		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn )
@@ -168,32 +171,16 @@ simulated function DrawRadar()
 
 	PlayerOwner.GetPlayerViewPoint(MyLoc, MyRot);
 
-	for ( i=0; i<PrevRadarItems.Length; i++ )
-	{
-		if ( PrevRadarItems[i].Alpha <= 0 )
-			continue;
-
-		V = PrevRadarItems[i].WorldLoc - MyLoc;
-		DistSqrt = Sqrt( VSize2D(V) );
-		if ( DistSqrt > RadarMaxDistSqrt )
-			continue;
-
-		DistOnRadar = (DistSqrt / RadarMaxDistSqrt) * RadarSize / 2;
-		Angle = (Rotator(V).Yaw - MyRot.Yaw - 16384) * 2*Pi / 65536;
-
-		Canvas.SetPos(RadarPosX + (RadarSize/2) + DistOnRadar*Cos(Angle) - (PrevRadarItems[i].Size/2), RadarPosY + (RadarSize/2) + DistOnRadar*Sin(Angle) - (PrevRadarItems[i].Size/2));
-		Canvas.SetDrawColor(PrevRadarItems[i].Col.R, PrevRadarItems[i].Col.G, PrevRadarItems[i].Col.B, byte(PrevRadarItems[i].Alpha*PrevRadarItems[i].Col.A));
-		Canvas.DrawTile(PrevRadarItems[i].Tex, PrevRadarItems[i].Size, PrevRadarItems[i].Size, 0, 0, PrevRadarItems[i].Tex.SizeX, PrevRadarItems[i].Tex.SizeY);
-
-		PrevRadarItems[i].Alpha -= (RenderDelta / RadarItemDuration);
-	}
 	for ( i=0; i<RadarItems.Length; i++ )
 	{
 		if ( RadarItems[i].Alpha <= 0 )
+		{
+			RadarItems.Remove(i--,1);
 			continue;
+		}
 
 		V = RadarItems[i].WorldLoc - MyLoc;
-		DistSqrt = Sqrt( VSize2D(V) );
+		DistSqrt = Sqrt(VSize2D(V));
 		if ( DistSqrt > RadarMaxDistSqrt )
 			continue;
 

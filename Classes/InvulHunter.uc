@@ -145,7 +145,7 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 	if (bInvincible)
 		return;
 	else
-		super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+		Super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
 }
 
 simulated function PlayPrefire()

@@ -151,6 +151,11 @@ State PreWaveCountdown
 		local Controller C;
 		local int i;
 
+`if(`DEBUG_MONSTER_STATES)
+		GRI.bStopCountDown = true;
+		return;
+`endif
+
 		// Setup new wave
 		CurrentWave = Conf.LoadedWaves[GRI.CurrentWave];
 
@@ -1085,6 +1090,36 @@ function int CalcMatchXPForPlayer(CRZPlayerController PC)
 //================================================
 // Misc
 //================================================
+
+// admin/standalone command - mostly for debugging
+exec function Summon(class<ToxikkMonster> MC, optional bool bBoss=false)
+{
+	local Controller C;
+	local NavigationPoint StartSpot;
+	local ToxikkMonster M;
+
+	if ( MC != None )
+	{
+		C = Spawn(MC.default.ControllerClass);
+		if ( C != None )
+		{
+			StartSpot = FindMonsterStart(C);
+			if ( StartSpot != None )
+			{
+				M = Spawn(MC,,, StartSpot.Location, StartSpot.Rotation);
+				if ( M != None )
+				{
+					if ( bBoss )
+						M.SetMonsterIsBoss();
+					M.SetParameters(1.0, PlayercountAdjuster.Health, 1.0, PlayercountAdjuster.MeleeDamage, PlayercountAdjuster.RangeDamage, "");
+					C.Possess(M, false);
+					return;
+				}
+			}
+			C.Destroy();
+		}
+	}
+}
 
 function float CalcAvgMapSize()
 {
