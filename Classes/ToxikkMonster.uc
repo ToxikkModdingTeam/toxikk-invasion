@@ -1219,7 +1219,11 @@ function MeleeDamage()
 	if ( Role == ROLE_Authority && Pawn(ToxikkMonsterController(Controller).Target) != None )
 	{
 		// EXPERIMENT
-		foreach WorldInfo.VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
+
+		//Note to self: bTraceActors will exclude actors which cannot be successfully traced to.
+		// When using WorldInfo iterator, trace will collide with self pawn and thus no other actor is returned.
+		// Must use iterator from self pawn, so that we are ignored during trace and therefore can reach other actors.
+		foreach VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
 		{
 			// only hit in front
 			if ( A != Self && Normal(A.Location - Location) Dot Normal(Vector(Rotation)) > Cos(DegToRad * PunchDegrees) )
@@ -1396,12 +1400,18 @@ DefaultProperties
 	
 	ControllerClass=class'ToxikkMonsterController'
 
-	// Monsters can't jump
+	// Monsters can't jump - or can they ?
     bJumpCapable=true
     bCanJump=true
-	
+	//TODO: tweak jump for each monster individually.
+	// - CRZPawn's JumpZ is 340 and reaches ~48 units
+	// - Pawn's JumpZ is 420 and reaches ~96 units
+	JumpZ=340
+	MaxJumpHeight=48
+	MaxStepHeight=26    // same as CRZPawn
+
 	DrawScale=1.25
-	
+
 	// How fast we run
     GroundSpeed=100.0
 	// Fall by default

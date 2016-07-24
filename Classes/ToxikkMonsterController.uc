@@ -299,7 +299,7 @@ auto state Wander
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		
-		Target = FindPathToward(RoamTarget);
+		Target = FindPathToward(RoamTarget,,, true);
 		
 		if (Target != None)
 		{
@@ -454,38 +454,24 @@ function bool ExtraRangedException()
 }
 
 // Returns whether or not two actors are on the same level
-static function bool OnSameLevel(Actor Parent, Actor Targ)
+function bool OnSameLevel(Actor Targ)
 {
 	if (Pawn(Targ) != None)
-		return Pawn(Parent).Controller.CanSee(Pawn(Targ)) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
+		return CanSee(Pawn(Targ)) && Targ.Location.Z < Pawn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
 	else
-		return Parent.FastTrace(Targ.Location,Parent.Location) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
+		return Pawn.FastTrace(Targ.Location,Pawn.Location) && Targ.Location.Z < PAwn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
 }
 
 // Whether or not we should do a melee attack
-static function bool CanDoMelee(Pawn Parent, Pawn Targ)
+function bool CanDoMelee(Pawn Targ)
 {
-	local float DistDifference;
-	
-	// Both have to be actual existing pawns
-	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
-		return false;
-		
-	DistDifference = VSize(Targ.Location - Parent.Location);
-	return DistDifference <= ToxikkMonster(Parent).AttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0*/ Parent.Controller.CanSee(Targ) && ToxikkMonster(Parent).bHasMelee;
+	return Targ != None && ToxikkMonster(Pawn).bHasMelee && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).AttackDistance;
 }
 
 // Whether or not we should do a ranged attack
-static function bool CanDoRanged(Pawn Parent, Pawn Targ)
+function bool CanDoRanged(Pawn Targ)
 {
-	local float DistDifference;
-	
-	// Both have to be actual existing pawns
-	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
-		return false;
-		
-	DistDifference = VSize(Targ.Location - Parent.Location);
-	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.Controller.CanSee(Targ) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+	return Targ != None && ToxikkMonster(Pawn).bHasRanged && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).RangedAttackDistance && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException();
 }
 
 state ChasePlayer
@@ -508,18 +494,23 @@ state ChasePlayer
         //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
-		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
+
+		//NOTE: This needs to be reworked - the line of sight should be separate from the "on same level" check.
+		// For ranged attacks, you need to check line of sight, but we don't care if it is on same level or not.
+		// The "on same level" check is only relevant for melee and for MoveToward.
+
+		if (ActorReachable(Target) && OnSameLevel(Target))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
 			
 			// CAN WE MELEE ATTACK?
-			if ( CanDoMelee(Pawn,Pawn(Target)) )
+			if ( CanDoMelee(Pawn(Target)) )
 			{
 				GotoState('Attacking');
 				break;
 			}
 			// OTHERWISE, CAN WE RANGED ATTACK?
-			else if ( CanDoRanged(Pawn,Pawn(Target)) )
+			else if ( CanDoRanged(Pawn(Target)) )
 			{
 				GotoState('PreAttack');
 				break;
@@ -530,20 +521,24 @@ state ChasePlayer
 		// Otherwise, use pathfinding
 		else
 		{
-			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2));
+			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2), true);
+
+			//NOTE: Same thing here, if we can ranged attack, we don't care about the MoveTarget being none or not.
+			// The attacking checks should be done in priority, and only then, do the pathing/movement IF we were not able to attack...
+
 			if (MoveTarget != none)
 			{
 				DistanceToPlayer = VSize(MoveTarget.Location - Pawn.Location);
 				tmp_Dist = VSize(Target.Location - Pawn.Location);
 				
 				// CAN WE MELEE ATTACK?
-				if ( CanDoMelee(Pawn,Pawn(Target)) )
+				if ( CanDoMelee(Pawn(Target)) )
 				{
 					GotoState('Attacking');
 					break;
 				}
 				// OTHERWISE, CAN WE RANGED ATTACK?
-				else if ( CanDoRanged(Pawn,Pawn(Target)) )
+				else if ( CanDoRanged(Pawn(Target)) )
 				{
 					GotoState('RangedAttack');
 					break;

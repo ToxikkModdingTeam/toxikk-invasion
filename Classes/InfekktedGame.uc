@@ -465,18 +465,27 @@ State MatchInProgress
 	{
 		local ToxikkMonster M;
 		local int Count;
+		local bool bRelocated;
 
+		bRelocated = false;
 		foreach WorldInfo.AllPawns(class'ToxikkMonster', M)
 		{
 			if ( M.Health > 0 )
 			{
 				Count++;
-				if ( ToxikkMonsterController(M.Controller) != None
+				if ( !bRelocated
+				&& ToxikkMonsterController(M.Controller) != None
 				&& WorldInfo.TimeSeconds - ToxikkMonsterController(M.Controller).LastTimeSomethingHappened > 30
 				&& RelocateMonster(M) )
 				{
 					ToxikkMonsterController(M.Controller).LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 					// `Log("[DEBUG] Monster " $ String(M.Name) $ " was relocated!");
+
+					// Allow only one relocation per Timer call, because they are costly!
+					// If we relocate several monsters at once, the server FPS takes a hit,
+					// and FindPlayerStart() can over-iterate in bigger maps.
+					// With just one per timer, we are safe.
+					bRelocated = true;
 				}
 			}
 		}

@@ -1,9 +1,9 @@
 //================================================================
-// package.InfekktedHud
+// Infekkted.InfekktedHud
 // ----------------
 // ...
 // ----------------
-// by Chatouille
+// by Chatouille & ZedekThePD
 //================================================================
 class InfekktedHud extends CRZHud
 	Config(Infekkted);
@@ -99,31 +99,30 @@ simulated event PostBeginPlay()
 // Load custom stuff from the config because why not
 function LoadCustomResources()
 {
-	local Texture2D TB, TF, TS;
+	local Texture2D Tex;
 	
 	// Foreground
-	TF = Texture2D(DynamicLoadObject(RadarTexFG,class'Texture2D'));
-	if (TF != None)
-		RadarFgTex = TF;
+	Tex = Texture2D(DynamicLoadObject(RadarTexFG, class'Texture2D', true));
+	if (Tex != None)
+		RadarFgTex = Tex;
 		
 	// Background
-	TB = Texture2D(DynamicLoadObject(RadarTexBG,class'Texture2D'));
-	if (TB != None)
-		RadarBgTex = TB;
+	Tex = Texture2D(DynamicLoadObject(RadarTexBG, class'Texture2D', true));
+	if (Tex != None)
+		RadarBgTex = Tex;
 		
 	// Scan
-	TS = Texture2D(DynamicLoadObject(RadarTexScan,class'Texture2D'));
-	if (TS != None)
-		RadarScanTex = TS;
+	Tex = Texture2D(DynamicLoadObject(RadarTexScan, class'Texture2D', true));
+	if (Tex != None)
+		RadarScanTex = Tex;
 }
 
-function UpdateHUD(float DeltaTime)
+function UpdateHUD(float dt)
 {
-	super.UpdateHUD(DeltaTime);
-	if (HudMovie != None)
-	{
+	Super.UpdateHUD(dt);
+
+	if ( HudMovie != None && HudMovie.PlayerStatsMC != None )
 		HudMovie.PlayerStatsMC.SetVisible(false);
-	}	
 }
 
 simulated function UpdateRadar()
@@ -197,7 +196,7 @@ simulated function DrawRadar()
 	local Rotator MyRot;
 	local int i;
 	local float DistSqrt, DistOnRadar, Angle;
-	Local Color CFG, CBG, CSC, CD;
+	Local Color CFG, CBG, CSC;
 
 	if ( CurrentHudMode != HM_Game && CurrentHudMode != HM_Spectating )
 		return;
@@ -273,35 +272,42 @@ simulated function DrawRemainingMonsters(int Count)
 
 simulated function DrawBoss()
 {
-	local int Health;
-	local string BossString;
-	local int R,G,B;
-
-	R = 255;
-	G = 255-byte(255.f*float(Max(Boss.Health,0))/float(Boss.HealthMax));
-	B = 0;
-
-	Health = Max(Boss.Health, 0);
-	BossString = "Boss HP: " $ string(Health) $ "/" $ string(Boss.HealthMax);
-	
-	DrawTextPlus(Canvas.ClipX - 16, Canvas.ClipY/2, ALIGN_Right, ALIGN_Top, BossString, true, R, G, B, class'CRZHud'.default.GlowFonts[0]);
-	
-	DrawBossName();
-}
-
-simulated function DrawBossName()
-{
 	local float XL, YL;
-	local string BossName;
 
-	BossName = Boss.GetMonsterName();
-	// BossName = "Sample Text";
-	Canvas.TextSize("Boss HP:", XL, YL);
-	
-	DrawTextPlus(Canvas.ClipX - 16, (Canvas.ClipY/2) + YL + 4.0, ALIGN_Right, ALIGN_Top, BossName, true, 255, 255, 0, class'CRZHud'.default.GlowFonts[0]);
+	//TODO: full width top-centered health bar, below is temporary stuff
+
+	// Draw boss HP
+	DrawTextPlus(
+		Canvas.ClipX - 16,
+		Canvas.ClipY/2,
+		ALIGN_Right,
+		ALIGN_Top,
+		"Boss HP: " $ Max(Boss.Health,0) $ "/" $ string(Boss.HealthMax),
+		true,
+		255,
+		255-byte(255.f*float(Max(Boss.Health,0))/float(Boss.HealthMax)),
+		0,
+		class'CRZHud'.default.GlowFonts[0]
+	);
+
+	// Draw boss name
+	Canvas.TextSize("BosHP:01234/56789",XL,YL); //need line height
+	DrawTextPlus(
+		Canvas.ClipX - 16,
+		Canvas.ClipY/2 + YL + 4,
+		ALIGN_Right,
+		ALIGN_Top,
+		Boss.GetMonsterName(),
+		true,
+		255,
+		255,
+		0,
+		class'CRZHud'.default.GlowFonts[0]
+	);
 }
 
-// -- DRAW TEXT AT A CERTAIN POSITION, THIS SAVES SOME TIME
+
+// -- DRAW TEXT AT A CERTAIN POSITION, THIS SAVES SOME LINES
 function DrawTextPlus(float DrawX, float DrawY, TextAlignType HAlign, TextAlignType VAlign, string Text, bool bUseShadow, int R, int G, int B, Font FontToUse)
 {
 	local float XL, YL;
@@ -309,56 +315,28 @@ function DrawTextPlus(float DrawX, float DrawY, TextAlignType HAlign, TextAlignT
 	
 	Canvas.Font = FontToUse;
 	Canvas.TextSize(Text,XL,YL);
-	
-	// Horizontal alignment
+
 	switch (HAlign)
 	{
-		// Left, do nothing
-		case ALIGN_Left:
-			FinalX = DrawX;
-		break;
-		
-		// Center
-		case ALIGN_Center:
-			FinalX = DrawX - (XL/2);
-		break;
-		
-		// Right
-		case ALIGN_Right:
-			FinalX = DrawX - XL;
-		break;
+		case ALIGN_Left:    FinalX = DrawX;             break;
+		case ALIGN_Center:  FinalX = DrawX - (XL/2);    break;
+		case ALIGN_Right:   FinalX = DrawX - XL;        break;
 	}
-	
-	// Vertical alignment
+
 	switch (VAlign)
 	{
-		// Left, do nothing
-		case ALIGN_Top:
-			FinalY = DrawY;
-		break;
-		
-		// Center
-		case ALIGN_Center:
-			FinalY = DrawY - (YL/2);
-		break;
-		
-		// Bottom
-		case ALIGN_Bottom:
-			FinalY = DrawY - YL;
-		break;
-		
-		default:
-			FinalY = DrawY;
-		break;
+		case ALIGN_Top:     FinalY = DrawY;             break;
+		case ALIGN_Center:  FinalY = DrawY - (YL/2);    break;
+		case ALIGN_Bottom:  FinalY = DrawY - YL;        break;
 	}
-	
+
 	if (bUseShadow)
 	{
 		Canvas.SetPos(FinalX+ShadowDistance,FinalY+ShadowDistance);
 		Canvas.SetDrawColor(0,0,0);
 		Canvas.DrawText(Text);
 	}
-	
+
 	Canvas.SetDrawColor(R,G,B);
 	Canvas.SetPos(FinalX,FinalY);
 	Canvas.DrawText(Text);
@@ -376,10 +354,6 @@ defaultproperties
 
 	RadarScanTex=Texture2D'CastleHUD.HUD_TouchToMove'   //Texture2D'fx_particles_01.flares.Textures.MF_T_FlareRing_01_D'
 	RadarScanColor=(R=100,G=200,B=255,A=200)
-	
-	// CustomRadarBG=(R=0,G=0,B=0,A=255)
-	// CustomRadarFG=(R=255,G=255,B=255,A=255)
-	// CustomRadarScan=(R=100,G=200,B=255,A=200)
 
 	RadarUpdateInterval=1.4
 	RadarScanTime=1.2
