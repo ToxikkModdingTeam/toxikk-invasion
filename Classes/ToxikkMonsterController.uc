@@ -111,7 +111,6 @@ function LockOnTo(Pawn Seen)
 //--ROTATING TOWARD OUR TARGET AND PREPARING FOR AN ATTACK, USED FOR RANGED
 state PreAttack
 {
-	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		BeginNotify("PreAttack");
 		Pawn.Acceleration = vect(0,0,1);
@@ -159,7 +158,6 @@ state PreAttack
 //--DOING OUR LUNGE ATTACK---------------------------
 state Lunging
 {
-	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -207,8 +205,7 @@ state Lunging
 
 // PLAYING SIGHT ANIM
 state Sight
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -244,7 +241,6 @@ state Sight
 // IN THIS STATE, WE'RE DOING NOTHING
 state Idling
 {
-	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -276,7 +272,6 @@ state Idling
 // ROAM AND LOOK FOR A PLAYER
 auto state Wander
 {
-	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -299,7 +294,7 @@ auto state Wander
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		
-		Target = FindPathToward(RoamTarget,,, true);
+		Target = FindPathToward(RoamTarget,true);
 		
 		if (Target != None)
 		{
@@ -323,7 +318,6 @@ auto state Wander
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
 state Attacking
 {
-	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -373,8 +367,7 @@ function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -454,29 +447,42 @@ function bool ExtraRangedException()
 }
 
 // Returns whether or not two actors are on the same level
-function bool OnSameLevel(Actor Targ)
+static function bool OnSameLevel(Actor Parent, Actor Targ)
 {
 	if (Pawn(Targ) != None)
-		return CanSee(Pawn(Targ)) && Targ.Location.Z < Pawn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
+		return Pawn(Parent).Controller.CanSee(Pawn(Targ)) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
 	else
-		return Pawn.FastTrace(Targ.Location,Pawn.Location) && Targ.Location.Z < PAwn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
+		return Parent.FastTrace(Targ.Location,Parent.Location) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
 }
 
 // Whether or not we should do a melee attack
-function bool CanDoMelee(Pawn Targ)
+static function bool CanDoMelee(Pawn Parent, Pawn Targ)
 {
-	return Targ != None && ToxikkMonster(Pawn).bHasMelee && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).AttackDistance;
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).AttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0*/ Parent.Controller.CanSee(Targ) && ToxikkMonster(Parent).bHasMelee;
 }
 
 // Whether or not we should do a ranged attack
-function bool CanDoRanged(Pawn Targ)
+static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 {
-	return Targ != None && ToxikkMonster(Pawn).bHasRanged && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).RangedAttackDistance && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException();
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.Controller.CanSee(Targ) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
 }
 
 state ChasePlayer
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -492,25 +498,24 @@ state ChasePlayer
     {
 		//class'NavmeshPath_Toward'.static.TowardGoal(NavigationHandle,Target);
         //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
+		ToxikkMonster(Pawn).bUsingStraightPath=false;
+		ToxikkMonster(Pawn).bBlindWalk=false;
+		ToxikkMonster(Pawn).bUsingJumpPad=false;
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
-
-		//NOTE: This needs to be reworked - the line of sight should be separate from the "on same level" check.
-		// For ranged attacks, you need to check line of sight, but we don't care if it is on same level or not.
-		// The "on same level" check is only relevant for melee and for MoveToward.
-
-		if (ActorReachable(Target) && OnSameLevel(Target))
+		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
+			ToxikkMonster(Pawn).bUsingStraightPath=true;
 			
 			// CAN WE MELEE ATTACK?
-			if ( CanDoMelee(Pawn(Target)) )
+			if ( CanDoMelee(Pawn,Pawn(Target)) )
 			{
 				GotoState('Attacking');
 				break;
 			}
 			// OTHERWISE, CAN WE RANGED ATTACK?
-			else if ( CanDoRanged(Pawn(Target)) )
+			else if ( CanDoRanged(Pawn,Pawn(Target)) )
 			{
 				GotoState('PreAttack');
 				break;
@@ -521,24 +526,20 @@ state ChasePlayer
 		// Otherwise, use pathfinding
 		else
 		{
-			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2), true);
-
-			//NOTE: Same thing here, if we can ranged attack, we don't care about the MoveTarget being none or not.
-			// The attacking checks should be done in priority, and only then, do the pathing/movement IF we were not able to attack...
-
+			MoveTarget = FindPathToward(Target,true,PerceptionDistance + (PerceptionDistance/2));
 			if (MoveTarget != none)
 			{
 				DistanceToPlayer = VSize(MoveTarget.Location - Pawn.Location);
 				tmp_Dist = VSize(Target.Location - Pawn.Location);
 				
 				// CAN WE MELEE ATTACK?
-				if ( CanDoMelee(Pawn(Target)) )
+				if ( CanDoMelee(Pawn,Pawn(Target)) )
 				{
 					GotoState('Attacking');
 					break;
 				}
 				// OTHERWISE, CAN WE RANGED ATTACK?
-				else if ( CanDoRanged(Pawn(Target)) )
+				else if ( CanDoRanged(Pawn,Pawn(Target)) )
 				{
 					GotoState('RangedAttack');
 					break;
@@ -557,7 +558,19 @@ state ChasePlayer
 				}
 			}
 			else
-                MoveToward(Target, Target, 20.0f);
+			{
+				ToxikkMonster(Pawn).bBlindWalk=true;
+				
+				// Find a jump pad instead
+				MoveTarget = FindPathTowardNearest(Class'UTJumpPad',true,PerceptionDistance + (PerceptionDistance/2));
+				if (MoveTarget != none)
+				{
+					ToxikkMonster(Pawn).bUsingJumpPad=true;
+					MoveToward(MoveTarget, MoveTarget, 20.0f);	
+				}
+				else
+					MoveToward(Target, Target, 20.0f);
+			}
 		}
 		
 		if (Target != None)

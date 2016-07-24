@@ -21,6 +21,13 @@ var		int								FaceRate;
 var		string							MonsterName;
 
 //=============================================================================
+//--DEBUG----------------------------------------------------------------------
+
+var		bool							bUsingStraightPath;				// We're not using pathfinding, just a straight path to the player
+var		bool							bBlindWalk;						// We're trying to use pathfinding but there's no MoveTarget
+var		bool							bUsingJumpPad;					// Walking toward a jump pad
+
+//=============================================================================
 //--ATTACKING------------------------------------------------------------------
 
 /** Monster can lunge (imp, trite, etc.) */
@@ -594,6 +601,28 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 //================================================
 // Misc
 //================================================
+
+// Extra fancy debug info
+simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
+{
+	local Canvas Canvas;
+	local float StartY;
+	local float XL, YL;
+	
+	super.DisplayDebug(HUD,out_YL,out_YPos);
+	
+	if (HUD.ShouldDisplayDebug('AI'))
+	{
+		Canvas = HUD.Canvas;
+		Canvas.TextSize("HEIGHT BLAH",XL,YL);
+		StartY = Canvas.ClipY * 0.35;
+		YL = YL + 12; // Add padding
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY,ALIGN_Left,ALIGN_Top,"Viewing"@GetMonsterName(),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+YL,ALIGN_Left,ALIGN_Top,"Straightline path:"@string(bUsingStraightPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*2),ALIGN_Left,ALIGN_Top,"Blind walk:"@string(bBlindWalk),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*3),ALIGN_Left,ALIGN_Top,"Using jump pad:"@string(bUsingJumpPad),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+	}
+}
 
 // Decide whether or not we're crawling (imps / vulgars)
 function SetCrawling(bool bCrawl)
@@ -1218,12 +1247,9 @@ function MeleeDamage()
 	
 	if ( Role == ROLE_Authority && Pawn(ToxikkMonsterController(Controller).Target) != None )
 	{
+		/*
 		// EXPERIMENT
-
-		//Note to self: bTraceActors will exclude actors which cannot be successfully traced to.
-		// When using WorldInfo iterator, trace will collide with self pawn and thus no other actor is returned.
-		// Must use iterator from self pawn, so that we are ignored during trace and therefore can reach other actors.
-		foreach VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
+		foreach WorldInfo.VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
 		{
 			// only hit in front
 			if ( A != Self && Normal(A.Location - Location) Dot Normal(Vector(Rotation)) > Cos(DegToRad * PunchDegrees) )
@@ -1231,11 +1257,12 @@ function MeleeDamage()
 				A.TakeDamage(PunchDamage, Controller, (Location + A.Location)/2, PunchMomentum*Normal(A.Location - Location), class'IFDmgType_Melee');
 			}
 		}
-
-		/* old
-		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
-			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, V, None);
 		*/
+
+		/* old */
+		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
+			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, Location, None);
+		//*/
 	}
 }
 
@@ -1400,18 +1427,12 @@ DefaultProperties
 	
 	ControllerClass=class'ToxikkMonsterController'
 
-	// Monsters can't jump - or can they ?
+	// Monsters can't jump
     bJumpCapable=true
     bCanJump=true
-	//TODO: tweak jump for each monster individually.
-	// - CRZPawn's JumpZ is 340 and reaches ~48 units
-	// - Pawn's JumpZ is 420 and reaches ~96 units
-	JumpZ=340
-	MaxJumpHeight=48
-	MaxStepHeight=26    // same as CRZPawn
-
+	
 	DrawScale=1.25
-
+	
 	// How fast we run
     GroundSpeed=100.0
 	// Fall by default
