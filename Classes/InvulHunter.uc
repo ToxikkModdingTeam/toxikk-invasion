@@ -266,4 +266,6 @@ DefaultProperties
 	SightChance=0.0
 	
 	Mass=10000
+	
+	MonsterName = "Invulnerability Hunter"
 }

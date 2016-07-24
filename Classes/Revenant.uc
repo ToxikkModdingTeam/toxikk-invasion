@@ -80,4 +80,6 @@ DefaultProperties
 	SightAnims(1)=Sight2
 	
 	Mass=400
+	
+	MonsterName = "Revenant"
 }

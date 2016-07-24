@@ -73,4 +73,6 @@ DefaultProperties
 	SightAnims(0)=Sight
 	
 	Mass=10000
+	
+	MonsterName = "Mancubus"
 }
