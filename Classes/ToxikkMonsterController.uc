@@ -35,9 +35,22 @@ function vector PosPlusHeight(vector Pos)
 
 event PostBeginPlay()
 {
+	// local CRZJumpPad Pad;
+	
     super.PostBeginPlay();
  
     NavigationHandle = new(self) class'NavigationHandle';
+	
+	`Log("TRYING TO INCREASE PAD HEIGHT");
+	
+	// HACK, INCREASE JUMP Z
+	/*
+	forEach AllActors(Class'CRZJumpPad',Pad)
+	{
+		Pad.JumpVelocity *= 1.25;
+		`Log("INCREASED PAD HEIGHT");
+	}
+	*/
 }
 
 // Possess a pawn
@@ -84,9 +97,18 @@ function float GetInFront(actor A, actor B)
 	return(aFacing dot aToB);
 }
 
+// Are we using a jump pad?
+function bool IsUsingPad()
+{
+	return UDKTrajectoryReachSpec(CurrentPath) != None;
+}
+
 // Acquire a new target
 function LockOnTo(Pawn Seen)
 {
+	// Uncomment to force this monster into wander
+	// return;
+	
 	if (Seen == None)
 		return;
 		
@@ -294,7 +316,7 @@ auto state Wander
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		
-		Target = FindPathToward(RoamTarget,true);
+		Target = FindPathToward(RoamTarget,false);
 		
 		if (Target != None)
 		{
@@ -304,11 +326,14 @@ auto state Wander
 		else
 		{
 			RoamTarget = FindRandomDest();
+			if (RouteCache.length > 0)
+				MoveToward(RouteCache[0]);
+
 			// `Log("Finding new target.");
 		}
 		
 		//Sleep(0.5);
-		Sleep(5.0);
+		Sleep(0.1);
 		
 	if (Pawn(Target) == None)
 		GotoState('Wander');
@@ -500,7 +525,7 @@ state ChasePlayer
         //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
 		ToxikkMonster(Pawn).bUsingStraightPath=false;
 		ToxikkMonster(Pawn).bBlindWalk=false;
-		ToxikkMonster(Pawn).bUsingJumpPad=false;
+		ToxikkMonster(Pawn).bUsingJumpPad=IsUsingPad();
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
 		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
@@ -521,7 +546,10 @@ state ChasePlayer
 				break;
 			}
 			else
-				MoveToward(Target, Target, 20.0f);
+			{
+				if (!IsUsingPad())
+					MoveToward(Target, Target, 20.0f);
+			}
 		}
 		// Otherwise, use pathfinding
 		else
@@ -551,24 +579,22 @@ state ChasePlayer
 						MoveToward(Target, Target, 20.0f);
 					// If the movement target's destination is less than 200
 					else if (DistanceToPlayer < 200)
-						MoveToward(MoveTarget, Target, 20.0f);
+					{
+						if (!IsUsingPad())
+							MoveToward(MoveTarget, Target, 20.0f);
+					}
 					// Otherwise just move normally
 					else
-						MoveToward(MoveTarget, MoveTarget, 20.0f);	
+					{
+						if (!IsUsingPad())
+							MoveToward(MoveTarget, MoveTarget, 20.0f);	
+					}
 				}
 			}
 			else
 			{
 				ToxikkMonster(Pawn).bBlindWalk=true;
-				
-				// Find a jump pad instead
-				MoveTarget = FindPathTowardNearest(Class'UTJumpPad',true,PerceptionDistance + (PerceptionDistance/2));
-				if (MoveTarget != none)
-				{
-					ToxikkMonster(Pawn).bUsingJumpPad=true;
-					MoveToward(MoveTarget, MoveTarget, 20.0f);	
-				}
-				else
+				if (!IsUsingPad())
 					MoveToward(Target, Target, 20.0f);
 			}
 		}
@@ -598,4 +624,5 @@ function BeginNotify(string StateName);
 defaultproperties
 {
 	PerceptionDistance=10000
+	bCanDoSpecial=true
 }

@@ -621,7 +621,32 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+YL,ALIGN_Left,ALIGN_Top,"Straightline path:"@string(bUsingStraightPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*2),ALIGN_Left,ALIGN_Top,"Blind walk:"@string(bBlindWalk),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*3),ALIGN_Left,ALIGN_Top,"Using jump pad:"@string(bUsingJumpPad),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		
+		// More pathfinding
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*4),ALIGN_Left,ALIGN_Top,"RouteCache Length:"@string(Controller.RouteCache.Length),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*5),ALIGN_Left,ALIGN_Top,"CurrentPath:"@string(Controller.CurrentPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*6),ALIGN_Left,ALIGN_Top,"NextRoutePath:"@string(Controller.NextRoutePath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*7),ALIGN_Left,ALIGN_Top,"MoveTarget:"@string(Controller.MoveTarget),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*8),ALIGN_Left,ALIGN_Top,"DestinationPosition:"@string(Controller.DestinationPosition.Position),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		//class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*9),ALIGN_Left,ALIGN_Top,"GoalList:"@string(Controller.GoalList),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*9),ALIGN_Left,ALIGN_Top,"RouteGoal:"@string(Controller.RouteGoal),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*10),ALIGN_Left,ALIGN_Top,"Target:"@string(ToxikkMonsterController(Controller).Target),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*11),ALIGN_Left,ALIGN_Top,"RoamTarget:"@string(ToxikkMonsterController(Controller).RoamTarget),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		
+		// Draw stuff on junk
+		if (ToxikkMonsterController(Controller).Target != None)
+			DrawSymbolOn("T",ToxikkMonsterController(Controller).Target,Canvas,255,255,255,ALIGN_Bottom);
+		if (ToxikkMonsterController(Controller).RoamTarget != None)
+			DrawSymbolOn("RT",ToxikkMonsterController(Controller).RoamTarget,Canvas,255,255,0,ALIGN_Top);
 	}
+}
+
+function DrawSymbolOn(string Symbol, Actor A, Canvas Canvas, int R, int G, int B, InfekktedHud.TextAlignType AL)
+{
+	local vector HP;
+	
+	HP = Canvas.Project(A.Location);
+	class'InfekktedHUD'.Static.DrawTextPlus(Canvas,HP.X,HP.Y,ALIGN_Center,AL,Symbol,true,R,G,B,class'CRZHud'.default.GlowFonts[0]);
 }
 
 // Decide whether or not we're crawling (imps / vulgars)
