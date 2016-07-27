@@ -512,6 +512,7 @@ simulated function Tick(float Delta)
 				TV.Z += CH2;
 				
 				// Through a wall
+				// TODO: Add some kind of distance or Z check so enemies can look up at players on a ledge (MAP30)
 				if (!FastTrace(TV, OV))
 				{
 					AV.X = 0.0;
@@ -602,6 +603,16 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 // Misc
 //================================================
 
+// HAVE WE REACHED OUR DESTINATION?
+// Mess with this function, this could potentially be used to move toward the jump target mid-air
+simulated function bool ReachedDestination(Actor Goal)
+{
+	if (UDKJumpPad(Goal) != None && FastTrace(UDKJumpPad(Goal).JumpTarget.Location,Location))
+		return true;
+	else
+		return super.ReachedDestination(Goal);
+}
+
 // Extra fancy debug info
 simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 {
@@ -620,7 +631,7 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY,ALIGN_Left,ALIGN_Top,"Viewing"@GetMonsterName(),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+YL,ALIGN_Left,ALIGN_Top,"Straightline path:"@string(bUsingStraightPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*2),ALIGN_Left,ALIGN_Top,"Blind walk:"@string(bBlindWalk),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
-		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*3),ALIGN_Left,ALIGN_Top,"Using jump pad:"@string(bUsingJumpPad),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*3),ALIGN_Left,ALIGN_Top,"Using jump pad:"@string(ToxikkMonsterController(Controller).IsUsingPad()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
 		// More pathfinding
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*4),ALIGN_Left,ALIGN_Top,"RouteCache Length:"@string(Controller.RouteCache.Length),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);

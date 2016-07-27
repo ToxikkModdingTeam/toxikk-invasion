@@ -22,6 +22,9 @@ var int tmp_i;
 var Vector tmp_V, tmp_PL, tmp_VL;
 var float tmp_Timer, tmp_TimerGoal, tmp_Dist;
 
+// UGLY HACK
+var			float			SmallBoxSize;
+
 function vector PosPlusHeight(vector Pos)
 {
 	local float CR, CH;
@@ -100,14 +103,18 @@ function float GetInFront(actor A, actor B)
 // Are we using a jump pad?
 function bool IsUsingPad()
 {
-	return UDKTrajectoryReachSpec(CurrentPath) != None;
+	// Play with this function a bit
+	//return UDKJumpPad(MoveTarget) != None;
+	//return UDKTrajectoryReachSpec(CurrentPath) != None;
+	
+	return false;
 }
 
 // Acquire a new target
 function LockOnTo(Pawn Seen)
 {
 	// Uncomment to force this monster into wander
-	// return;
+	//return;
 	
 	if (Seen == None)
 		return;
@@ -291,6 +298,24 @@ state Idling
 		BeginNotify("Idling");
 }
 
+// -- DISGUSTING PATH HACK - Forces the pathfinding system to find a path
+// -- This should only be used in "blind walk" mode, AKA if the monster ABSOLUTELY CANNOT find a path
+// -- TODO: CHECK ALL PATH NODES IN ROUTECACHE TO SEE IF THIS PAWN WILL RUN INTO A WALL
+simulated function Actor HackPath(Actor Toward, optional bool bDetour, optional int MaxLength, optional bool bPartial)
+{
+	local Actor MT;
+	local float OldRadius, OldHeight;
+	
+	OldRadius = ToxikkMonster(Pawn).CylinderComponent.CollisionRadius;
+	OldHeight = ToxikkMonster(Pawn).CylinderComponent.CollisionHeight;
+	
+	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(SmallBoxSize,SmallBoxSize);
+	MT = FindPathToward(Toward,bDetour,MaxLength,bPartial);
+	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(OldRadius,OldHeight);
+	
+	return MT;
+}
+
 // ROAM AND LOOK FOR A PLAYER
 auto state Wander
 {
@@ -316,6 +341,7 @@ auto state Wander
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		
+		// Don't use HackPath here, it's okay if we can't use jump pads
 		Target = FindPathToward(RoamTarget,false);
 		
 		if (Target != None)
@@ -525,7 +551,6 @@ state ChasePlayer
         //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
 		ToxikkMonster(Pawn).bUsingStraightPath=false;
 		ToxikkMonster(Pawn).bBlindWalk=false;
-		ToxikkMonster(Pawn).bUsingJumpPad=IsUsingPad();
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
 		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
@@ -555,6 +580,11 @@ state ChasePlayer
 		else
 		{
 			MoveTarget = FindPathToward(Target,true,PerceptionDistance + (PerceptionDistance/2));
+			
+			// If regular pathfinding doesn't work, then force it
+			if (MoveTarget == None)
+				MoveTarget = HackPath(Target,true,PerceptionDistance + (PerceptionDistance/2));
+			
 			if (MoveTarget != none)
 			{
 				DistanceToPlayer = VSize(MoveTarget.Location - Pawn.Location);
@@ -574,15 +604,16 @@ state ChasePlayer
 				}
 				else
 				{
-					// If the player's within 200 units then just move toward them
-					if (tmp_Dist < 200)
+					// If the player's within 200 units AND ON THE SAME LEVEL then just move toward them
+					if (tmp_Dist < 200 && OnSameLevel(Pawn,Target))
 						MoveToward(Target, Target, 20.0f);
 					// If the movement target's destination is less than 200
-					else if (DistanceToPlayer < 200)
-					{
-						if (!IsUsingPad())
-							MoveToward(MoveTarget, Target, 20.0f);
-					}
+					// WHY WAS THIS ADDED I DON'T GET IT
+					//else if (DistanceToPlayer < 200)
+					//{
+						//if (!IsUsingPad())
+							//MoveToward(MoveTarget, Target, 20.0f);
+					//}
 					// Otherwise just move normally
 					else
 					{
@@ -625,4 +656,6 @@ defaultproperties
 {
 	PerceptionDistance=10000
 	bCanDoSpecial=true
+	
+	SmallBoxSize = 8.0
 }
