@@ -26,6 +26,7 @@ var		string							MonsterName;
 var		bool							bUsingStraightPath;				// We're not using pathfinding, just a straight path to the player
 var		bool							bBlindWalk;						// We're trying to use pathfinding but there's no MoveTarget
 var		bool							bUsingJumpPad;					// Walking toward a jump pad
+var		float							JumpPadDelay;					// A "cooldown" for using a jump pad
 
 //=============================================================================
 //--ATTACKING------------------------------------------------------------------
@@ -605,12 +606,46 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 
 // HAVE WE REACHED OUR DESTINATION?
 // Mess with this function, this could potentially be used to move toward the jump target mid-air
+/*
 simulated function bool ReachedDestination(Actor Goal)
 {
 	if (UDKJumpPad(Goal) != None && FastTrace(UDKJumpPad(Goal).JumpTarget.Location,Location))
 		return true;
 	else
 		return super.ReachedDestination(Goal);
+}
+*/
+
+// WE TOUCHED SOMETHING
+simulated event Touch (Actor Other, PrimitiveComponent OtherComp, Object.Vector HitLocation, Object.Vector HitNormal)
+{
+	// Touched a jump pad in particular
+	if (UDKJumpPad(Other) != None)
+	{
+		if (!bUsingJumpPad)
+		{
+			`Log("TOUCHED A JUMP PAD");
+			PadAdjustments();
+			bUsingJumpPad=true;
+			SetTimer(JumpPadDelay,false,'AllowJumpPad');
+			
+			// Things for the controller
+			ToxikkMonsterController(Controller).PreviousPad = UDKJumpPad(Other);
+			ToxikkMonsterController(Controller).GotoState('PadAir');
+			
+			return;
+		}
+	}
+	
+	super.Touch(Other,OtherComp,HitLocation,HitNormal);
+}
+
+// When we use a jump pad, we can do adjustments here to make sure the monster reaches its destination
+simulated function PadAdjustments();
+
+simulated function AllowJumpPad()
+{
+	bUsingJumpPad=false;
 }
 
 // Extra fancy debug info
@@ -619,6 +654,7 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 	local Canvas Canvas;
 	local float StartY;
 	local float XL, YL;
+	local int l;
 	
 	super.DisplayDebug(HUD,out_YL,out_YPos);
 	
@@ -643,21 +679,31 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*9),ALIGN_Left,ALIGN_Top,"RouteGoal:"@string(Controller.RouteGoal),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*10),ALIGN_Left,ALIGN_Top,"Target:"@string(ToxikkMonsterController(Controller).Target),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*11),ALIGN_Left,ALIGN_Top,"RoamTarget:"@string(ToxikkMonsterController(Controller).RoamTarget),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*12),ALIGN_Left,ALIGN_Top,"Previous pad:"@string(ToxikkMonsterController(Controller).PreviousPad),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*13),ALIGN_Left,ALIGN_Top,"C. State:"@string(ToxikkMonsterController(Controller).GetStateName()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*13),ALIGN_Left,ALIGN_Top,"C. State:"@string(ToxikkMonsterController(Controller).GetStateName()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
 		// Draw stuff on junk
 		if (ToxikkMonsterController(Controller).Target != None)
-			DrawSymbolOn("T",ToxikkMonsterController(Controller).Target,Canvas,255,255,255,ALIGN_Bottom);
+			DrawSymbolOn("T",ToxikkMonsterController(Controller).Target,Canvas,255,255,255,ALIGN_Bottom,class'CRZHud'.default.GlowFonts[0]);
 		if (ToxikkMonsterController(Controller).RoamTarget != None)
-			DrawSymbolOn("RT",ToxikkMonsterController(Controller).RoamTarget,Canvas,255,255,0,ALIGN_Top);
+			DrawSymbolOn("RT",ToxikkMonsterController(Controller).RoamTarget,Canvas,255,255,0,ALIGN_Top,class'CRZHud'.default.GlowFonts[0]);
+			
+		// -- DRAW DEBUG NUMBERS
+		for (l=0; l<Controller.RouteCache.Length; l++)
+		{
+			DrawSymbolOn(string(l),Controller.RouteCache[l],Canvas,255,255,64,ALIGN_Center,class'CRZPawn'.default.BeaconFont);
+		}
 	}
 }
 
-function DrawSymbolOn(string Symbol, Actor A, Canvas Canvas, int R, int G, int B, InfekktedHud.TextAlignType AL)
+function DrawSymbolOn(string Symbol, Actor A, Canvas Canvas, int R, int G, int B, InfekktedHud.TextAlignType AL,Font FNT)
 {
 	local vector HP;
 	
 	HP = Canvas.Project(A.Location);
-	class'InfekktedHUD'.Static.DrawTextPlus(Canvas,HP.X,HP.Y,ALIGN_Center,AL,Symbol,true,R,G,B,class'CRZHud'.default.GlowFonts[0]);
+	class'InfekktedHUD'.Static.DrawTextPlus(Canvas,HP.X,HP.Y,ALIGN_Center,AL,Symbol,true,R,G,B,FNT);
 }
 
 // Decide whether or not we're crawling (imps / vulgars)
@@ -1295,10 +1341,8 @@ function MeleeDamage()
 		}
 		*/
 
-		/* old */
 		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
 			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, Location, None);
-		//*/
 	}
 }
 
@@ -1526,4 +1570,6 @@ DefaultProperties
 	FaceRate=1000
 	
 	MonsterName=""
+	
+	JumpPadDelay=0.25
 }

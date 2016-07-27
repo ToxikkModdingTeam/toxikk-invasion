@@ -24,6 +24,7 @@ var float tmp_Timer, tmp_TimerGoal, tmp_Dist;
 
 // UGLY HACK
 var			float			SmallBoxSize;
+var			UDKJumpPad		PreviousPad;				// The jump pad that we just touched
 
 function vector PosPlusHeight(vector Pos)
 {
@@ -34,6 +35,16 @@ function vector PosPlusHeight(vector Pos)
 	Pos.Z += CH/2;
 	
 	return Pos;
+}
+
+static function vector PosCenter(Pawn P)
+{
+	local Vector V;
+	
+	V = P.Location;
+	V.Z += P.CylinderComponent.CollisionHeight/2;
+	
+	return V;
 }
 
 event PostBeginPlay()
@@ -107,7 +118,8 @@ function bool IsUsingPad()
 	//return UDKJumpPad(MoveTarget) != None;
 	//return UDKTrajectoryReachSpec(CurrentPath) != None;
 	
-	return false;
+	return ToxikkMonster(Pawn).bUsingJumpPad;
+	//return false;
 }
 
 // Acquire a new target
@@ -529,7 +541,26 @@ static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 		return false;
 		
 	DistDifference = VSize(Targ.Location - Parent.Location);
-	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.Controller.CanSee(Targ) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && !Parent.FastTrace(Class'ToxikkMonsterController'.Static.PosCenter(Parent),Class'ToxikkMonsterController'.Static.PosCenter(Targ)) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+}
+
+// WE GO TO THIS STATE AFTER WE HIT A JUMP PAD
+// Basically ensure that the monster reaches its destination properly
+state PadAir
+{
+	Begin:
+		While (!ToxikkMonster(Pawn).ReachedDestination(PreviousPad.JumpTarget) && PreviousPad != None)
+		{
+			MoveTo(PreviousPad.JumpTarget.Location,PreviousPad.JumpTarget);
+			sleep(0.01);
+		}
+		
+		PreviousPad = None;
+		
+		if (Target != None)
+			GotoState('ChasePlayer');
+		else
+			GotoState('Wander');
 }
 
 state ChasePlayer
@@ -584,6 +615,12 @@ state ChasePlayer
 			// If regular pathfinding doesn't work, then force it
 			if (MoveTarget == None)
 				MoveTarget = HackPath(Target,true,PerceptionDistance + (PerceptionDistance/2));
+			
+			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
+			{
+				`Log("SWAPPED TO CACHE 1");
+				MoveTarget = RouteCache[1];
+			}
 			
 			if (MoveTarget != none)
 			{
