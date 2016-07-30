@@ -14,6 +14,8 @@ var rotator DesiredRot;
 var bool bCanRanged;
 var float RangedTimer;
 
+var bool bUseDetours;
+
 // timestamp to relocate monster when nothing happens for too long
 var float LastTimeSomethingHappened;
 
@@ -25,6 +27,7 @@ var float tmp_Timer, tmp_TimerGoal, tmp_Dist;
 // UGLY HACK
 var			float			SmallBoxSize;
 var			UDKJumpPad		PreviousPad;				// The jump pad that we just touched
+var			bool			bExitPadState;				// If true, we need to go back to roaming
 
 function vector PosPlusHeight(vector Pos)
 {
@@ -112,15 +115,7 @@ function float GetInFront(actor A, actor B)
 }
 
 // Are we using a jump pad?
-function bool IsUsingPad()
-{
-	// Play with this function a bit
-	//return UDKJumpPad(MoveTarget) != None;
-	//return UDKTrajectoryReachSpec(CurrentPath) != None;
-	
-	return ToxikkMonster(Pawn).bUsingJumpPad;
-	//return false;
-}
+function bool IsUsingPad() {return false;}
 
 // Acquire a new target
 function LockOnTo(Pawn Seen)
@@ -354,7 +349,7 @@ auto state Wander
 			RoamTarget = FindRandomDest();
 		
 		// Don't use HackPath here, it's okay if we can't use jump pads
-		Target = FindPathToward(RoamTarget,false);
+		Target = FindPathToward(RoamTarget,bUseDetours);
 		
 		if (Target != None)
 		{
@@ -541,20 +536,29 @@ static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 		return false;
 		
 	DistDifference = VSize(Targ.Location - Parent.Location);
-	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && !Parent.FastTrace(Class'ToxikkMonsterController'.Static.PosCenter(Parent),Class'ToxikkMonsterController'.Static.PosCenter(Targ)) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.FastTrace(Class'ToxikkMonsterController'.Static.PosCenter(Parent),Class'ToxikkMonsterController'.Static.PosCenter(Targ)) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
 }
 
 // WE GO TO THIS STATE AFTER WE HIT A JUMP PAD
 // Basically ensure that the monster reaches its destination properly
 state PadAir
 {
+	function bool IsUsingPad() {return true;}
+	
 	Begin:
-		While (!ToxikkMonster(Pawn).ReachedDestination(PreviousPad.JumpTarget) && PreviousPad != None)
+		While ( /*!ToxikkMonster(Pawn).ReachedDestination(PreviousPad.JumpTarget) &&*/ PreviousPad != None && !bExitPadState)
 		{
-			MoveTo(PreviousPad.JumpTarget.Location,PreviousPad.JumpTarget);
+			// IF WE CAN SEE THE PLAYER AND HE'S BELOW US THEN JUST MOVE TOWARD HIM
+			// Helps on some maps like Novus where monsters can only fall onto a pad
+			if (Pawn(Target) != None && FastTrace(PosCenter(Pawn),PosCenter(Pawn(Target))) && Target.Location.Z <= Pawn.Location.Z)
+				MoveTo(Target.Location,Target);
+			else
+				MoveTo(PreviousPad.JumpTarget.Location,PreviousPad.JumpTarget);
+				
 			sleep(0.01);
 		}
 		
+		bExitPadState=false;
 		PreviousPad = None;
 		
 		if (Target != None)
@@ -610,11 +614,11 @@ state ChasePlayer
 		// Otherwise, use pathfinding
 		else
 		{
-			MoveTarget = FindPathToward(Target,true,PerceptionDistance + (PerceptionDistance/2));
+			MoveTarget = FindPathToward(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
 			// If regular pathfinding doesn't work, then force it
 			if (MoveTarget == None)
-				MoveTarget = HackPath(Target,true,PerceptionDistance + (PerceptionDistance/2));
+				MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
 			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
 			{
@@ -695,4 +699,6 @@ defaultproperties
 	bCanDoSpecial=true
 	
 	SmallBoxSize = 8.0
+	
+	bUseDetours=false
 }

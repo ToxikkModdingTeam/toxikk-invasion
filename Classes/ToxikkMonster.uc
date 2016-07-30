@@ -682,7 +682,8 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*12),ALIGN_Left,ALIGN_Top,"Previous pad:"@string(ToxikkMonsterController(Controller).PreviousPad),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*13),ALIGN_Left,ALIGN_Top,"C. State:"@string(ToxikkMonsterController(Controller).GetStateName()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
-		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*13),ALIGN_Left,ALIGN_Top,"C. State:"@string(ToxikkMonsterController(Controller).GetStateName()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*14),ALIGN_Left,ALIGN_Top,"Target Pos:"@string(ToxikkMonsterController(Controller).Target.Location),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*15),ALIGN_Left,ALIGN_Top,"Pos:"@string(Location),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
 		// Draw stuff on junk
 		if (ToxikkMonsterController(Controller).Target != None)
@@ -1296,7 +1297,18 @@ simulated event OnAnimEnd(AnimNodeSequence SeqNode, float PlayedTime, float Exce
 event Landed(vector HitNormal, Actor FloorActor)
 {
 	if (Role == ROLE_Authority)
+	{
 		bIsLunging=false;
+		
+		if (ToxikkMonsterController(Controller) != None)
+		{
+			if (ToxikkMonsterController(Controller).IsUsingPad())
+			{
+				ToxikkMonsterController(Controller).bExitPadState=true;
+				`Log("LANDED, LET'S EXIT PAD STATE");
+			}
+		}
+	}
 		
 	super.Landed(HitNormal, FloorActor);
 }
@@ -1436,6 +1448,8 @@ static function string GetMonsterName()
 	else
 		return default.MonsterName;
 }
+
+
 
 DefaultProperties
 {
