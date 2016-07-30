@@ -404,7 +404,10 @@ state Attacking
 		
 		tmp_i = Rand(ToxikkMonster(Pawn).MeleeAttackAnims.Length);
 		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
-		Pawn.PlaySound(ToxikkMonster(Pawn).AttackSound);
+		
+		if (ToxikkMonster(Pawn).AttackSound != None)
+			Pawn.PlaySound(ToxikkMonster(Pawn).AttackSound);
+		
 		tmp_TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
 		tmp_Timer = 0;
 		while (tmp_Timer < tmp_TimerGoal)

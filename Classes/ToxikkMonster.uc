@@ -1586,4 +1586,6 @@ DefaultProperties
 	MonsterName=""
 	
 	JumpPadDelay=0.25
+	
+	bCanPickupInventory=false
 }
