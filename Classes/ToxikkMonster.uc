@@ -1587,5 +1587,7 @@ DefaultProperties
 	
 	JumpPadDelay=0.25
 	
-	bCanPickupInventory=false
+	bCanPickupInventory=true
+	
+	RotationRate=(Pitch=20000,Yaw=50000,Roll=20000)
 }

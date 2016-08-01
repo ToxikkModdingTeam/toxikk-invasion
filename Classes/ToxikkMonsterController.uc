@@ -4,7 +4,7 @@
 Class ToxikkMonsterController extends AIController;
 
 // Pawn we're following
-var Actor Target, RoamTarget;
+var Actor Target, RoamTarget, TempTarget;
 var Vector TempDest;
 var vector nextlocation;
 // How far the player can go before we lose sight of him
@@ -15,6 +15,7 @@ var bool bCanRanged;
 var float RangedTimer;
 
 var bool bUseDetours;
+var int o;
 
 // timestamp to relocate monster when nothing happens for too long
 var float LastTimeSomethingHappened;
@@ -549,7 +550,7 @@ state PadAir
 	function bool IsUsingPad() {return true;}
 	
 	Begin:
-		While ( /*!ToxikkMonster(Pawn).ReachedDestination(PreviousPad.JumpTarget) &&*/ PreviousPad != None && !bExitPadState)
+		While (PreviousPad != None && !bExitPadState)
 		{
 			// IF WE CAN SEE THE PLAYER AND HE'S BELOW US THEN JUST MOVE TOWARD HIM
 			// Helps on some maps like Novus where monsters can only fall onto a pad
@@ -560,6 +561,11 @@ state PadAir
 				
 			sleep(0.01);
 		}
+		
+		// -- CLEAR OUR PATHS SO WE HAVE TO RECALCULATE
+		RoamTarget = None;
+		MoveTarget = None;
+		TempTarget = None;
 		
 		bExitPadState=false;
 		PreviousPad = None;
@@ -617,11 +623,44 @@ state ChasePlayer
 		// Otherwise, use pathfinding
 		else
 		{
-			MoveTarget = FindPathToward(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+			// -- FIRST START WITH HACK PATH
+			MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
-			// If regular pathfinding doesn't work, then force it
+			// -- DOES A JUMP PAD EXIST?
+			if (MoveTarget != None)
+			{
+				for (o=0; o<RouteCache.length; o++)
+				{
+					if (UDKJumpPad(RouteCache[o]) != None)
+					{
+						TempTarget = FindPathToward(RouteCache[o],bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+						
+						// Could not reach this jump pad
+						if (TempTarget == None)
+						{
+							MoveTarget = None;
+							break;
+						}
+						
+						// We can reach the jump pad, set that to our end target
+						else
+							MoveTarget = TempTarget;
+					}
+				}
+			}
+			
+			// If the jump pad route didn't work, then let's do a failsafe
 			if (MoveTarget == None)
-				MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+			{
+				Target = None;
+				GotoState('Wander');
+			}
+			
+				//MoveTarget = FindPathToward(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+				
+				//Target = None;
+				//GotoState('Wander');
+				//MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
 			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
 			{

@@ -140,7 +140,7 @@ DefaultProperties
 	
 	PunchDamage=30
 	
-	Health=450
+	Health=250
 	
 	ControllerClass=Class'WraithController'
 	
