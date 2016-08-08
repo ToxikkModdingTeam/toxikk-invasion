@@ -138,7 +138,7 @@ simulated function UpdateRadar()
 
 	foreach WorldInfo.AllPawns(class'Pawn', P)
 	{
-		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn )
+		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn || Vehicle(P) != None )
 			continue;
 
 		i = RadarItems.Length;
