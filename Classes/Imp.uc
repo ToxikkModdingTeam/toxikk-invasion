@@ -131,4 +131,6 @@ DefaultProperties
 	SightAnims(0)=Sight
 	
 	MonsterName = "Imp"
+	
+	Mass=1000
 }

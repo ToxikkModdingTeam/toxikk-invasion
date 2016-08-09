@@ -1208,8 +1208,8 @@ function float RateMonsterStart(NavigationPoint P, Controller C)
 {
 	local float Score;
 	local Pawn Other;
-	local CRZPawn OtherPlayer;
-	local float Dist;
+	local CRZPawn OtherPlayer, ClosestPlayer;
+	local float Dist, ClosestDist;
 
 	if ( P.Base == None )
 		return -1;
@@ -1254,8 +1254,17 @@ function float RateMonsterStart(NavigationPoint P, Controller C)
 
 			if ( Score < 0 )
 				return -1;
+
+			if ( ClosestPlayer == None || Dist < ClosestDist )
+			{
+				ClosestPlayer = OtherPlayer;
+				ClosestDist = Dist;
+			}
 		}
 	}
+
+	if ( ClosestPlayer != None )
+		Score *= ( 1.0 + 0.2*(1.0 - ClosestDist/2000.0) );
 
 	return Score;
 }

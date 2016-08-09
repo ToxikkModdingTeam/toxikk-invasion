@@ -152,7 +152,7 @@ DefaultProperties
 	
 	bUseAimOffset=false
 	
-	Mass=300
+	Mass=500
 	
 	MonsterName = "Wraith"
 }
