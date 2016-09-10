@@ -9,7 +9,7 @@ class MancubusMissile extends RevenantMissile;
 
 defaultproperties
 {
-	Damage=80
+	Damage=70
 	DamageRadius=220
 	MomentumTransfer=2500
 

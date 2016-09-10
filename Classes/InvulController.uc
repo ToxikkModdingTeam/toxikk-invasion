@@ -32,7 +32,7 @@ simulated function RangedException()
 // STOMPING
 state Stomp
 {
-	//`DEBUG_MONSTER_STATE_DECL
+	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		InvulHunter(Pawn).PlaySound(InvulHunter(Pawn).FireballCue,TRUE);
 		InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).StompAnim);
@@ -43,7 +43,7 @@ state Stomp
 // SUMMONING
 state Summon
 {
-	//`DEBUG_MONSTER_STATE_DECL
+	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).InvulAnim);
 		Sleep(Pawn.Mesh.GetAnimLength(InvulHunter(Pawn).InvulAnim));

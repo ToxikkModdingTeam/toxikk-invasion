@@ -148,6 +148,7 @@ function LockOnTo(Pawn Seen)
 //--ROTATING TOWARD OUR TARGET AND PREPARING FOR AN ATTACK, USED FOR RANGED
 state PreAttack
 {
+	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		BeginNotify("PreAttack");
 		Pawn.Acceleration = vect(0,0,1);
@@ -195,6 +196,8 @@ state PreAttack
 //--DOING OUR LUNGE ATTACK---------------------------
 state Lunging
 {
+	`DEBUG_MONSTER_STATE_DECL
+
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -242,7 +245,9 @@ state Lunging
 
 // PLAYING SIGHT ANIM
 state Sight
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
+
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -278,6 +283,8 @@ state Sight
 // IN THIS STATE, WE'RE DOING NOTHING
 state Idling
 {
+	`DEBUG_MONSTER_STATE_DECL
+
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -313,13 +320,21 @@ simulated function Actor HackPath(Actor Toward, optional bool bDetour, optional 
 {
 	local Actor MT;
 	local float OldRadius, OldHeight;
-	
+
+	//1. backup monster values that will be modified
 	OldRadius = ToxikkMonster(Pawn).CylinderComponent.CollisionRadius;
 	OldHeight = ToxikkMonster(Pawn).CylinderComponent.CollisionHeight;
-	
+
+	//2. modify monster for better pathfinding
 	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(SmallBoxSize,SmallBoxSize);
+	Pawn.bCanPickupInventory = true;
+
+	//3. Call pathfinding
 	MT = FindPathToward(Toward,bDetour,MaxLength,bPartial);
+
+	//4. Restore values
 	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(OldRadius,OldHeight);
+	Pawn.bCanPickupInventory = false;
 	
 	return MT;
 }
@@ -377,6 +392,8 @@ auto state Wander
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
 state Attacking
 {
+	`DEBUG_MONSTER_STATE_DECL
+
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -429,7 +446,9 @@ function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
+
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -597,6 +616,11 @@ state ChasePlayer
 		ToxikkMonster(Pawn).bBlindWalk=false;
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
+
+		//NOTE: This needs to be reworked - the line of sight should be separate from the "on same level" check.
+		// For ranged attacks, you need to check line of sight, but we don't care if it is on same level or not.
+		// The "on same level" check is only relevant for melee and for MoveToward.
+
 		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
@@ -623,9 +647,12 @@ state ChasePlayer
 		// Otherwise, use pathfinding
 		else
 		{
+			//NOTE: Same thing here, if we can ranged attack, we don't care about the MoveTarget being none or not.
+			// The attacking checks should be done in priority, and only then, do the pathing/movement IF we were not able to attack...
+
 			// -- FIRST START WITH HACK PATH
 			MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
-			
+
 			// -- DOES A JUMP PAD EXIST?
 			if (MoveTarget != None)
 			{

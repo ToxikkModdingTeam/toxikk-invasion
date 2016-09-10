@@ -151,10 +151,10 @@ State PreWaveCountdown
 		local Controller C;
 		local int i;
 
-//`if(`DEBUG_MONSTER_STATES)
-		//GRI.bStopCountDown = true;
-		//return;
-//`endif
+`if(`DEBUG_MONSTER_STATES)
+		GRI.bStopCountDown = true;
+		return;
+`endif
 
 		// Setup new wave
 		CurrentWave = Conf.LoadedWaves[GRI.CurrentWave];

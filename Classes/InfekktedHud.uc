@@ -217,9 +217,12 @@ simulated function DrawRadar()
 	RadarPosX = Canvas.ClipX - 1.1*RadarSize;
 	RadarPosY = Canvas.ClipY * 0.2;
 
-	Canvas.DrawColor = CBG;
-	Canvas.SetPos(RadarPosX, RadarPosY);
-	Canvas.DrawTile(RadarBgTex, RadarSize, RadarSize, 0, 0, RadarBgTex.SizeX, RadarBgTex.SizeY);
+	if ( RadarBgTex != None )
+	{
+		Canvas.DrawColor = CBG;
+		Canvas.SetPos(RadarPosX, RadarPosY);
+		Canvas.DrawTile(RadarBgTex, RadarSize, RadarSize, 0, 0, RadarBgTex.SizeX, RadarBgTex.SizeY);
+	}
 	Canvas.DrawColor = CFG;
 	Canvas.SetPos(RadarPosX, RadarPosY);
 	Canvas.DrawTile(RadarFgTex, RadarSize, RadarSize, 0, 0, RadarFgTex.SizeX, RadarFgTex.SizeY);
@@ -348,7 +351,8 @@ defaultproperties
 {
 	RadarSize=300
 
-	RadarBgTex=Texture2D'CRZGFx.HUD_I3E'
+	//NOTE: referencing CRZGFx is fucked up because it's regenerated with every patch
+	//RadarBgTex=Texture2D'CRZGFx.HUD_I3E'
 	RadarBgColor=(R=0,G=0,B=0,A=255)
 
 	RadarFgTex=Texture2D'UDKHUD.ut3_minimap_compass'

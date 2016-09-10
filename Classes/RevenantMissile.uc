@@ -34,7 +34,7 @@ defaultproperties
 	MaxSpeed=1600
 	AccelRate=2200
 
-	Damage=70
+	Damage=60
 	DamageRadius=200
 	MomentumTransfer=2000
 	MyDamageType=Class'IFDmgType_MonsterMissile'

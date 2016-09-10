@@ -1341,9 +1341,12 @@ function MeleeDamage()
 	
 	if ( Role == ROLE_Authority && Pawn(ToxikkMonsterController(Controller).Target) != None )
 	{
-		/*
 		// EXPERIMENT
-		foreach WorldInfo.VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
+
+		//Note to self: bTraceActors will exclude actors which cannot be successfully traced to.
+		// When using WorldInfo iterator, trace will collide with self pawn and thus no other actor is returned.
+		// Must use iterator from self pawn, so that we are ignored during trace and therefore can reach other actors.
+		foreach VisibleCollidingActors(class'Actor', A, AttackDistance, Location, true,, true)
 		{
 			// only hit in front
 			if ( A != Self && Normal(A.Location - Location) Dot Normal(Vector(Rotation)) > Cos(DegToRad * PunchDegrees) )
@@ -1351,10 +1354,11 @@ function MeleeDamage()
 				A.TakeDamage(PunchDamage, Controller, (Location + A.Location)/2, PunchMomentum*Normal(A.Location - Location), class'IFDmgType_Melee');
 			}
 		}
-		*/
 
+		/* old
 		if (VSize(ToxikkMonsterController(Controller).Target.Location - Location) <= AttackDistance)
-			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, Location, None);
+			ToxikkMonsterController(Controller).Target.TakeDamage(PunchDamage, Controller, ToxikkMonsterController(Controller).Target.Location, V, None);
+		*/
 	}
 }
 
@@ -1521,7 +1525,7 @@ DefaultProperties
 	
 	ControllerClass=class'ToxikkMonsterController'
 
-	// Monsters can't jump
+	// Monsters can't jump - or can they ?
     bJumpCapable=true
     bCanJump=true
 	
@@ -1587,7 +1591,7 @@ DefaultProperties
 	
 	JumpPadDelay=0.25
 	
-	bCanPickupInventory=true
+	bCanPickupInventory=false
 	
 	RotationRate=(Pitch=20000,Yaw=50000,Roll=20000)
 }

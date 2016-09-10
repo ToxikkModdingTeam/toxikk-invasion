@@ -5,8 +5,8 @@ defaultproperties
 	MaxSpeed=1900
 	AccelRate=2800
 
-	Damage=90
-	DamageRadius=240
+	Damage=95
+	DamageRadius=250
 	MomentumTransfer=3000
 
 	BaseTrackingStrength=1.000000
