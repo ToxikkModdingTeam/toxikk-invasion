@@ -4,7 +4,7 @@
 Class ToxikkMonsterController extends AIController;
 
 // Pawn we're following
-var Actor Target, RoamTarget;
+var Actor Target, RoamTarget, TempTarget;
 var Vector TempDest;
 var vector nextlocation;
 // How far the player can go before we lose sight of him
@@ -14,6 +14,9 @@ var rotator DesiredRot;
 var bool bCanRanged;
 var float RangedTimer;
 
+var bool bUseDetours;
+var int o;
+
 // timestamp to relocate monster when nothing happens for too long
 var float LastTimeSomethingHappened;
 
@@ -21,6 +24,11 @@ var float LastTimeSomethingHappened;
 var int tmp_i;
 var Vector tmp_V, tmp_PL, tmp_VL;
 var float tmp_Timer, tmp_TimerGoal, tmp_Dist;
+
+// UGLY HACK
+var			float			SmallBoxSize;
+var			UDKJumpPad		PreviousPad;				// The jump pad that we just touched
+var			bool			bExitPadState;				// If true, we need to go back to roaming
 
 function vector PosPlusHeight(vector Pos)
 {
@@ -33,11 +41,34 @@ function vector PosPlusHeight(vector Pos)
 	return Pos;
 }
 
+static function vector PosCenter(Pawn P)
+{
+	local Vector V;
+	
+	V = P.Location;
+	V.Z += P.CylinderComponent.CollisionHeight/2;
+	
+	return V;
+}
+
 event PostBeginPlay()
 {
+	// local CRZJumpPad Pad;
+	
     super.PostBeginPlay();
  
     NavigationHandle = new(self) class'NavigationHandle';
+	
+	`Log("TRYING TO INCREASE PAD HEIGHT");
+	
+	// HACK, INCREASE JUMP Z
+	/*
+	forEach AllActors(Class'CRZJumpPad',Pad)
+	{
+		Pad.JumpVelocity *= 1.25;
+		`Log("INCREASED PAD HEIGHT");
+	}
+	*/
 }
 
 // Possess a pawn
@@ -84,9 +115,15 @@ function float GetInFront(actor A, actor B)
 	return(aFacing dot aToB);
 }
 
+// Are we using a jump pad?
+function bool IsUsingPad() {return false;}
+
 // Acquire a new target
 function LockOnTo(Pawn Seen)
 {
+	// Uncomment to force this monster into wander
+	//return;
+	
 	if (Seen == None)
 		return;
 		
@@ -111,7 +148,6 @@ function LockOnTo(Pawn Seen)
 //--ROTATING TOWARD OUR TARGET AND PREPARING FOR AN ATTACK, USED FOR RANGED
 state PreAttack
 {
-	`DEBUG_MONSTER_STATE_DECL
 	Begin:
 		BeginNotify("PreAttack");
 		Pawn.Acceleration = vect(0,0,1);
@@ -159,7 +195,6 @@ state PreAttack
 //--DOING OUR LUNGE ATTACK---------------------------
 state Lunging
 {
-	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -207,8 +242,7 @@ state Lunging
 
 // PLAYING SIGHT ANIM
 state Sight
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -244,7 +278,6 @@ state Sight
 // IN THIS STATE, WE'RE DOING NOTHING
 state Idling
 {
-	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -273,10 +306,27 @@ state Idling
 		BeginNotify("Idling");
 }
 
+// -- DISGUSTING PATH HACK - Forces the pathfinding system to find a path
+// -- This should only be used in "blind walk" mode, AKA if the monster ABSOLUTELY CANNOT find a path
+// -- TODO: CHECK ALL PATH NODES IN ROUTECACHE TO SEE IF THIS PAWN WILL RUN INTO A WALL
+simulated function Actor HackPath(Actor Toward, optional bool bDetour, optional int MaxLength, optional bool bPartial)
+{
+	local Actor MT;
+	local float OldRadius, OldHeight;
+	
+	OldRadius = ToxikkMonster(Pawn).CylinderComponent.CollisionRadius;
+	OldHeight = ToxikkMonster(Pawn).CylinderComponent.CollisionHeight;
+	
+	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(SmallBoxSize,SmallBoxSize);
+	MT = FindPathToward(Toward,bDetour,MaxLength,bPartial);
+	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(OldRadius,OldHeight);
+	
+	return MT;
+}
+
 // ROAM AND LOOK FOR A PLAYER
 auto state Wander
 {
-	`DEBUG_MONSTER_STATE_DECL
 	// Change targets if we actually see the player in front of us
 	event SeePlayer(Pawn Seen)
 	{
@@ -299,7 +349,8 @@ auto state Wander
 		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
 			RoamTarget = FindRandomDest();
 		
-		Target = FindPathToward(RoamTarget,,, true);
+		// Don't use HackPath here, it's okay if we can't use jump pads
+		Target = FindPathToward(RoamTarget,bUseDetours);
 		
 		if (Target != None)
 		{
@@ -309,11 +360,14 @@ auto state Wander
 		else
 		{
 			RoamTarget = FindRandomDest();
+			if (RouteCache.length > 0)
+				MoveToward(RouteCache[0]);
+
 			// `Log("Finding new target.");
 		}
 		
 		//Sleep(0.5);
-		Sleep(5.0);
+		Sleep(0.1);
 		
 	if (Pawn(Target) == None)
 		GotoState('Wander');
@@ -323,7 +377,6 @@ auto state Wander
 //--MONSTER IS DOING A MELEE ATTACK----------------------------------------------------------------
 state Attacking
 {
-	`DEBUG_MONSTER_STATE_DECL
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -352,7 +405,10 @@ state Attacking
 		
 		tmp_i = Rand(ToxikkMonster(Pawn).MeleeAttackAnims.Length);
 		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
-		Pawn.PlaySound(ToxikkMonster(Pawn).AttackSound);
+		
+		if (ToxikkMonster(Pawn).AttackSound != None)
+			Pawn.PlaySound(ToxikkMonster(Pawn).AttackSound);
+		
 		tmp_TimerGoal = ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).MeleeAttackAnims[tmp_i]);
 		tmp_Timer = 0;
 		while (tmp_Timer < tmp_TimerGoal)
@@ -373,8 +429,7 @@ function RangedException();
 
 //--MONSTER IS DOING A RANGED ATTACK----------------------------------------------------------------
 state RangedAttack
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -454,29 +509,75 @@ function bool ExtraRangedException()
 }
 
 // Returns whether or not two actors are on the same level
-function bool OnSameLevel(Actor Targ)
+static function bool OnSameLevel(Actor Parent, Actor Targ)
 {
 	if (Pawn(Targ) != None)
-		return CanSee(Pawn(Targ)) && Targ.Location.Z < Pawn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
+		return Pawn(Parent).Controller.CanSee(Pawn(Targ)) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
 	else
-		return Pawn.FastTrace(Targ.Location,Pawn.Location) && Targ.Location.Z < PAwn.Location.Z+100 && Targ.Location.Z > Pawn.Location.Z - 25;
+		return Parent.FastTrace(Targ.Location,Parent.Location) && Targ.Location.Z < Parent.Location.Z+100 && Targ.Location.Z > Parent.Location.Z - 25;
 }
 
 // Whether or not we should do a melee attack
-function bool CanDoMelee(Pawn Targ)
+static function bool CanDoMelee(Pawn Parent, Pawn Targ)
 {
-	return Targ != None && ToxikkMonster(Pawn).bHasMelee && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).AttackDistance;
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).AttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0*/ Parent.Controller.CanSee(Targ) && ToxikkMonster(Parent).bHasMelee;
 }
 
 // Whether or not we should do a ranged attack
-function bool CanDoRanged(Pawn Targ)
+static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 {
-	return Targ != None && ToxikkMonster(Pawn).bHasRanged && CanSee(Targ) && VSize(Targ.Location-Pawn.Location) <= ToxikkMonster(Pawn).RangedAttackDistance && RangedTimer >= ToxikkMonster(Pawn).RangedDelay && ExtraRangedException();
+	local float DistDifference;
+	
+	// Both have to be actual existing pawns
+	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
+		return false;
+		
+	DistDifference = VSize(Targ.Location - Parent.Location);
+	return DistDifference <= ToxikkMonster(Parent).RangedAttackDistance && /*Class'ToxikkMonster'.Static.GetInFront(Parent, Targ) > 0.0 &&*/ ToxikkMonster(Parent).bHasRanged && Parent.FastTrace(Class'ToxikkMonsterController'.Static.PosCenter(Parent),Class'ToxikkMonsterController'.Static.PosCenter(Targ)) && ToxikkMonsterController(Parent.Controller).RangedTimer >= ToxikkMonster(Parent).RangedDelay && ToxikkMonsterController(Parent.Controller).ExtraRangedException();
+}
+
+// WE GO TO THIS STATE AFTER WE HIT A JUMP PAD
+// Basically ensure that the monster reaches its destination properly
+state PadAir
+{
+	function bool IsUsingPad() {return true;}
+	
+	Begin:
+		While (PreviousPad != None && !bExitPadState)
+		{
+			// IF WE CAN SEE THE PLAYER AND HE'S BELOW US THEN JUST MOVE TOWARD HIM
+			// Helps on some maps like Novus where monsters can only fall onto a pad
+			if (Pawn(Target) != None && FastTrace(PosCenter(Pawn),PosCenter(Pawn(Target))) && Target.Location.Z <= Pawn.Location.Z)
+				MoveTo(Target.Location,Target);
+			else
+				MoveTo(PreviousPad.JumpTarget.Location,PreviousPad.JumpTarget);
+				
+			sleep(0.01);
+		}
+		
+		// -- CLEAR OUR PATHS SO WE HAVE TO RECALCULATE
+		RoamTarget = None;
+		MoveTarget = None;
+		TempTarget = None;
+		
+		bExitPadState=false;
+		PreviousPad = None;
+		
+		if (Target != None)
+			GotoState('ChasePlayer');
+		else
+			GotoState('Wander');
 }
 
 state ChasePlayer
-{
-	`DEBUG_MONSTER_STATE_DECL
+{	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -492,72 +593,124 @@ state ChasePlayer
     {
 		//class'NavmeshPath_Toward'.static.TowardGoal(NavigationHandle,Target);
         //class'NavMeshGoal_At'.static.AtLocation(NavigationHandle,Target.Location);
+		ToxikkMonster(Pawn).bUsingStraightPath=false;
+		ToxikkMonster(Pawn).bBlindWalk=false;
 				
 		// The player is directly in our line of sight and on the same level, so use them as a target and walk toward them
-
-		//NOTE: This needs to be reworked - the line of sight should be separate from the "on same level" check.
-		// For ranged attacks, you need to check line of sight, but we don't care if it is on same level or not.
-		// The "on same level" check is only relevant for melee and for MoveToward.
-
-		if (ActorReachable(Target) && OnSameLevel(Target))
+		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
 		{
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
+			ToxikkMonster(Pawn).bUsingStraightPath=true;
 			
 			// CAN WE MELEE ATTACK?
-			if ( CanDoMelee(Pawn(Target)) )
+			if ( CanDoMelee(Pawn,Pawn(Target)) )
 			{
 				GotoState('Attacking');
 				break;
 			}
 			// OTHERWISE, CAN WE RANGED ATTACK?
-			else if ( CanDoRanged(Pawn(Target)) )
+			else if ( CanDoRanged(Pawn,Pawn(Target)) )
 			{
 				GotoState('PreAttack');
 				break;
 			}
 			else
-				MoveToward(Target, Target, 20.0f);
+			{
+				if (!IsUsingPad())
+					MoveToward(Target, Target, 20.0f);
+			}
 		}
 		// Otherwise, use pathfinding
 		else
 		{
-			MoveTarget = FindPathToward(Target,,PerceptionDistance + (PerceptionDistance/2), true);
-
-			//NOTE: Same thing here, if we can ranged attack, we don't care about the MoveTarget being none or not.
-			// The attacking checks should be done in priority, and only then, do the pathing/movement IF we were not able to attack...
-
+			// -- FIRST START WITH HACK PATH
+			MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+			
+			// -- DOES A JUMP PAD EXIST?
+			if (MoveTarget != None)
+			{
+				for (o=0; o<RouteCache.length; o++)
+				{
+					if (UDKJumpPad(RouteCache[o]) != None)
+					{
+						TempTarget = FindPathToward(RouteCache[o],bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+						
+						// Could not reach this jump pad
+						if (TempTarget == None)
+						{
+							MoveTarget = None;
+							break;
+						}
+						
+						// We can reach the jump pad, set that to our end target
+						else
+							MoveTarget = TempTarget;
+					}
+				}
+			}
+			
+			// If the jump pad route didn't work, then let's do a failsafe
+			if (MoveTarget == None)
+			{
+				Target = None;
+				GotoState('Wander');
+			}
+			
+				//MoveTarget = FindPathToward(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+				
+				//Target = None;
+				//GotoState('Wander');
+				//MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+			
+			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
+			{
+				`Log("SWAPPED TO CACHE 1");
+				MoveTarget = RouteCache[1];
+			}
+			
 			if (MoveTarget != none)
 			{
 				DistanceToPlayer = VSize(MoveTarget.Location - Pawn.Location);
 				tmp_Dist = VSize(Target.Location - Pawn.Location);
 				
 				// CAN WE MELEE ATTACK?
-				if ( CanDoMelee(Pawn(Target)) )
+				if ( CanDoMelee(Pawn,Pawn(Target)) )
 				{
 					GotoState('Attacking');
 					break;
 				}
 				// OTHERWISE, CAN WE RANGED ATTACK?
-				else if ( CanDoRanged(Pawn(Target)) )
+				else if ( CanDoRanged(Pawn,Pawn(Target)) )
 				{
 					GotoState('RangedAttack');
 					break;
 				}
 				else
 				{
-					// If the player's within 200 units then just move toward them
-					if (tmp_Dist < 200)
+					// If the player's within 200 units AND ON THE SAME LEVEL then just move toward them
+					if (tmp_Dist < 200 && OnSameLevel(Pawn,Target))
 						MoveToward(Target, Target, 20.0f);
 					// If the movement target's destination is less than 200
-					else if (DistanceToPlayer < 200)
-						MoveToward(MoveTarget, Target, 20.0f);
+					// WHY WAS THIS ADDED I DON'T GET IT
+					//else if (DistanceToPlayer < 200)
+					//{
+						//if (!IsUsingPad())
+							//MoveToward(MoveTarget, Target, 20.0f);
+					//}
 					// Otherwise just move normally
 					else
-						MoveToward(MoveTarget, MoveTarget, 20.0f);	
+					{
+						if (!IsUsingPad())
+							MoveToward(MoveTarget, MoveTarget, 20.0f);	
+					}
 				}
 			}
 			else
-                MoveToward(Target, Target, 20.0f);
+			{
+				ToxikkMonster(Pawn).bBlindWalk=true;
+				if (!IsUsingPad())
+					MoveToward(Target, Target, 20.0f);
+			}
 		}
 		
 		if (Target != None)
@@ -585,4 +738,9 @@ function BeginNotify(string StateName);
 defaultproperties
 {
 	PerceptionDistance=10000
+	bCanDoSpecial=true
+	
+	SmallBoxSize = 8.0
+	
+	bUseDetours=false
 }

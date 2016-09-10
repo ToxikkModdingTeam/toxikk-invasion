@@ -165,4 +165,6 @@ DefaultProperties
 	SightAnims(0)=Sight
 	
 	MonsterName="Fat Zombie"
+	
+	Mass=1000
 }

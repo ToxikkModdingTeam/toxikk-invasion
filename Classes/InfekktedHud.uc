@@ -138,7 +138,7 @@ simulated function UpdateRadar()
 
 	foreach WorldInfo.AllPawns(class'Pawn', P)
 	{
-		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn )
+		if ( P.IsInState('Dying') || P.Health <= 0 || P == PlayerOwner.Pawn || Vehicle(P) != None )
 			continue;
 
 		i = RadarItems.Length;
@@ -267,7 +267,7 @@ simulated function DrawRadar()
 
 simulated function DrawRemainingMonsters(int Count)
 {
-	DrawTextPlus(Canvas.ClipX - 16, Canvas.ClipY*0.2 - 16, ALIGN_Right, ALIGN_Bottom, "Remaining monsters: " $ Count, true, 255,255,255,class'CRZHud'.default.GlowFonts[0]);
+	DrawTextPlus(Canvas, Canvas.ClipX - 16, Canvas.ClipY*0.2 - 16, ALIGN_Right, ALIGN_Bottom, "Remaining monsters: " $ Count, true, 255,255,255,class'CRZHud'.default.GlowFonts[0]);
 }
 
 simulated function DrawBoss()
@@ -278,6 +278,7 @@ simulated function DrawBoss()
 
 	// Draw boss HP
 	DrawTextPlus(
+		Canvas,
 		Canvas.ClipX - 16,
 		Canvas.ClipY/2,
 		ALIGN_Right,
@@ -293,6 +294,7 @@ simulated function DrawBoss()
 	// Draw boss name
 	Canvas.TextSize("BosHP:01234/56789",XL,YL); //need line height
 	DrawTextPlus(
+		Canvas,
 		Canvas.ClipX - 16,
 		Canvas.ClipY/2 + YL + 4,
 		ALIGN_Right,
@@ -308,13 +310,13 @@ simulated function DrawBoss()
 
 
 // -- DRAW TEXT AT A CERTAIN POSITION, THIS SAVES SOME LINES
-function DrawTextPlus(float DrawX, float DrawY, TextAlignType HAlign, TextAlignType VAlign, string Text, bool bUseShadow, int R, int G, int B, Font FontToUse)
+static function DrawTextPlus(Canvas CNV, float DrawX, float DrawY, TextAlignType HAlign, TextAlignType VAlign, string Text, bool bUseShadow, int R, int G, int B, Font FontToUse)
 {
 	local float XL, YL;
 	local float FinalX, FinalY;
 	
-	Canvas.Font = FontToUse;
-	Canvas.TextSize(Text,XL,YL);
+	CNV.Font = FontToUse;
+	CNV.TextSize(Text,XL,YL);
 
 	switch (HAlign)
 	{
@@ -332,14 +334,14 @@ function DrawTextPlus(float DrawX, float DrawY, TextAlignType HAlign, TextAlignT
 
 	if (bUseShadow)
 	{
-		Canvas.SetPos(FinalX+ShadowDistance,FinalY+ShadowDistance);
-		Canvas.SetDrawColor(0,0,0);
-		Canvas.DrawText(Text);
+		CNV.SetPos(FinalX+default.ShadowDistance,FinalY+default.ShadowDistance);
+		CNV.SetDrawColor(0,0,0);
+		CNV.DrawText(Text);
 	}
 
-	Canvas.SetDrawColor(R,G,B);
-	Canvas.SetPos(FinalX,FinalY);
-	Canvas.DrawText(Text);
+	CNV.SetDrawColor(R,G,B);
+	CNV.SetPos(FinalX,FinalY);
+	CNV.DrawText(Text);
 }
 
 defaultproperties
