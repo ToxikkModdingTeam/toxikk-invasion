@@ -119,20 +119,43 @@ function float GetInFront(actor A, actor B)
 function bool IsUsingPad() {return false;}
 
 // Acquire a new target
-function LockOnTo(Pawn Seen)
+function bool LockOnTo(Pawn Seen)
 {
+	local Vector MyRot;
+	local float Dist1, Dist2, Dot1, Dot2;
+
 	// Uncomment to force this monster into wander
 	//return;
 	
 	if (Seen == None)
-		return;
+		return false;
 		
 	if (Target != Seen)
 	{
 		// Never lock onto other monsters, or ourselves
 		if (ToxikkMonster(Seen) != None || Seen == Pawn)
-			return;
-			
+			return false;
+
+		// Don't change target if current Target is better/easier than Seen
+		if ( Target != None && LineOfSightTo(Target) )
+		{
+			if ( LineOfSightTo(Seen) )
+			{
+				// Both have LoS, check which one is most in front, but also favor closer target
+				MyRot = Vector( Pawn.Rotation.yaw*Rot(0,1,0) );
+				Dist1 = VSize(Target.Location - Pawn.Location);
+				Dist2 = VSize(Seen.Location - Pawn.Location);
+				Dot1 = 3.0 + (MyRot Dot (Target.Location-Pawn.Location)/Dist1, 0);
+				Dot2 = 3.0 + (MyRot Dot (Seen.Location-Pawn.Location)/Dist2, 0);
+				if ( Dot1/Sqrt(Dist1) > Dot2/Sqrt(Dist2) )
+					return false;
+			}
+			// Target has LoS but not Seen, keep Target
+			else
+				return false;
+		}
+		// Neither have LoS, keep the most recent (==Seen)
+
 		Target = Seen;
 		ToxikkMonster(Pawn).SeenSomething();
 
@@ -143,6 +166,7 @@ function LockOnTo(Pawn Seen)
 		else
 			GotoState('ChasePlayer');
 	}
+	return true;
 }
 
 //--ROTATING TOWARD OUR TARGET AND PREPARING FOR AN ATTACK, USED FOR RANGED
@@ -566,6 +590,8 @@ static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 // Basically ensure that the monster reaches its destination properly
 state PadAir
 {
+	`DEBUG_MONSTER_STATE_DECL
+
 	function bool IsUsingPad() {return true;}
 	
 	Begin:
@@ -596,7 +622,9 @@ state PadAir
 }
 
 state ChasePlayer
-{	
+{
+	`DEBUG_MONSTER_STATE_DECL
+
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);

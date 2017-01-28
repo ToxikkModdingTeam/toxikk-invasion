@@ -89,15 +89,18 @@ simulated function DoSummon()
 	local Rotator R;
 	local ParticleSystemComponent PSC;
 	local Vector HL;
+
+	if ( Controller == None || Controller.IsInState('Sight') )
+		return;
 	
-	if (ROLE == Role_Authority)
+	if ( ROLE == Role_Authority )
 		ToggleInvul(true);
 	
 	if (WorldInfo.NetMode != NM_DedicatedServer)
 	{
-			HL =  Mesh.GetBoneLocation('origin');
-			PSC = WorldInfo.MyEmitterPool.SpawnEmitter(SummonSystem, HL, R, None);
-			PSC.SetScale(StompScale);
+		HL =  Mesh.GetBoneLocation('origin');
+		PSC = WorldInfo.MyEmitterPool.SpawnEmitter(SummonSystem, HL, R, None);
+		PSC.SetScale(StompScale);
 	}
 }
 
@@ -141,9 +144,16 @@ simulated function PostBeginPlay()
 // Don't take damage if we're invincible
 event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
 {
-	// Do certain things here if the player tries to hurt us
-	if (bInvincible)
+	if ( bInvincible )
+	{
+		// lock to attacker
+		if ( ToxikkMonsterController(Controller) != None && InstigatedBy != None && InstigatedBy.Pawn != None )
+		{
+			if ( ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn) )
+				SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
+		}
 		return;
+	}
 	else
 		Super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
 }

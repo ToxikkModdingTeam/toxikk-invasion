@@ -3,29 +3,27 @@
 Class InvulController extends ToxikkMonsterController;
 
 // How many ranged attacks we should do before we toggle invincibility
-var			int				MaxFreeRanged, RangedCounter;
+var	int MaxFreeRanged, RangedCounter;
+// Chance of going invincible before MaxFreeRanged
+var float SummonChance;
 // Chance of going vincible
-var			float			StompChance;
+var float StompChance;
 
 //--------------------------------------------------------------------
 
 // Stomp or summon
 simulated function RangedException()
 {
-	RangedCounter ++;
-	
-	if (RangedCounter >= MaxFreeRanged && !InvulHunter(Pawn).bInvincible)
+	if ( !InvulHunter(Pawn).bInvincible )
 	{
-		RangedCounter=0;
-		GotoState('Summon');
+		RangedCounter++;
+		if ( RangedCounter >= MaxFreeRanged || FRand() <= SummonChance )
+			GotoState('Summon');
 	}
-	else
+	else if ( FRand() <= StompChance )
 	{
-		if (FRand() >= 1.0-StompChance && InvulHunter(Pawn).bInvincible && RangedCounter >= MaxFreeRanged)
-		{
-			RangedCounter=0;
-			GotoState('Stomp');
-		}
+		RangedCounter = 0;
+		GotoState('Stomp');
 	}
 }
 
@@ -33,10 +31,11 @@ simulated function RangedException()
 state Stomp
 {
 	`DEBUG_MONSTER_STATE_DECL
-	Begin:
-		InvulHunter(Pawn).PlaySound(InvulHunter(Pawn).FireballCue,TRUE);
-		InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).StompAnim);
-		Sleep(Pawn.Mesh.GetAnimLength(InvulHunter(Pawn).StompAnim));
+
+Begin:
+	InvulHunter(Pawn).PlaySound(InvulHunter(Pawn).FireballCue,TRUE);
+	InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).StompAnim);
+	Sleep(Pawn.Mesh.GetAnimLength(InvulHunter(Pawn).StompAnim));
 	GotoState('ChasePlayer');
 }
 
@@ -44,15 +43,20 @@ state Stomp
 state Summon
 {
 	`DEBUG_MONSTER_STATE_DECL
-	Begin:
-		InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).InvulAnim);
-		Sleep(Pawn.Mesh.GetAnimLength(InvulHunter(Pawn).InvulAnim));
+
+Begin:
+	InvulHunter(Pawn).PlayForcedAnim(InvulHunter(Pawn).InvulAnim);
+	Sleep(Pawn.Mesh.GetAnimLength(InvulHunter(Pawn).InvulAnim));
 	GotoState('ChasePlayer');
 }
 
 defaultproperties
 {
-	MaxFreeRanged=3
-	// 25% chance to stompsummon
+	MaxFreeRanged=4
+	// have shield initially ready
+	RangedCounter=4
+	// 25% chance to summon (shield) before reaching MaxFreeRanged
+	SummonChance=0.25
+	// 25% chance to stomp (kill shield)
 	StompChance=0.25
 }
