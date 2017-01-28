@@ -1081,18 +1081,18 @@ function ViewObjective(PlayerController PC)
 // Skill class and XP
 //================================================
 
-function float CalcMatchSkillForPlayer(CRZPlayerController PC)
+function float CalcMatchSkillForPlayer(CRZPlayerReplicationInfo PRI)
 {
 	`Log("[TODO] CalcMatchSkillForPlayer");
 
-	return Super.CalcMatchSkillForPlayer(PC);
+	return Super.CalcMatchSkillForPlayer(PRI);
 }
 
-function int CalcMatchXPForPlayer(CRZPlayerController PC)
+function int CalcMatchXPForPlayer(CRZPlayerReplicationInfo PRI)
 {
 	`Log("[TODO] CalcMatchXPForPlayer");
 
-	return Super.CalcMatchXPForPlayer(PC);
+	return Super.CalcMatchXPForPlayer(PRI);
 }
 
 
