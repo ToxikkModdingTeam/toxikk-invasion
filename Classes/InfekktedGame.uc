@@ -1120,7 +1120,7 @@ exec function Summon(class<ToxikkMonster> MC, optional bool bBoss=false)
 				{
 					if ( bBoss )
 						M.SetMonsterIsBoss();
-					M.SetParameters(1.0, PlayercountAdjuster.Health, 1.0, PlayercountAdjuster.MeleeDamage, PlayercountAdjuster.RangeDamage, "");
+					M.SetParameters(1.0, M.Health*PlayercountAdjuster.Health, 1.0, PlayercountAdjuster.MeleeDamage, PlayercountAdjuster.RangeDamage, "");
 					C.Possess(M, false);
 					return;
 				}
