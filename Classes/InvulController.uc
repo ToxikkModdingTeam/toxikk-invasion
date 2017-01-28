@@ -12,20 +12,21 @@ var			float			StompChance;
 // Stomp or summon
 simulated function RangedException()
 {
+	// Every time we do a ranged attack
 	RangedCounter ++;
 	
+	// NOT INVINCIBLE
 	if (RangedCounter >= MaxFreeRanged && !InvulHunter(Pawn).bInvincible)
 	{
 		RangedCounter=0;
-		GotoState('Summon');
+		GotoState('Summon'); // ABORT REAL RANGED
 	}
-	else
+		
+	// INVINCIBLE
+	else if (FRand() >= 1.0-StompChance)
 	{
-		if (FRand() >= 1.0-StompChance && InvulHunter(Pawn).bInvincible && RangedCounter >= MaxFreeRanged)
-		{
-			RangedCounter=0;
-			GotoState('Stomp');
-		}
+		RangedCounter=0;
+		GotoState('Stomp'); // ABORT REAL RANGED
 	}
 }
 

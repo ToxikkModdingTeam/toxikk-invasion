@@ -239,7 +239,7 @@ DefaultProperties
 
 	bHasRanged=true
 	MissileClass=Class'InvulBall'
-	RangedDelay=0.0
+	RangedDelay=2.0
 	RangedAttackDistance=2500
 	RangedAttackAnims(0)=Attack1
 	RangedAttackAnims(1)=ShockAttack

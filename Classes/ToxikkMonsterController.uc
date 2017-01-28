@@ -186,10 +186,10 @@ state PreAttack
 				GotoState('RangedAttack');
 		else
 		{
-				if (Target != None)
-					GotoState('ChasePlayer');
-				else
-					GotoState('Wander');
+			if (Target != None)
+				GotoState('ChasePlayer');
+			else
+				GotoState('Wander');
 		}
 }
 
@@ -597,6 +597,8 @@ state PadAir
 
 state ChasePlayer
 {	
+	`DEBUG_MONSTER_STATE_DECL
+	
 	function Tick(float Delta)
 	{
 		super.Tick(Delta);
@@ -635,6 +637,7 @@ state ChasePlayer
 			// OTHERWISE, CAN WE RANGED ATTACK?
 			else if ( CanDoRanged(Pawn,Pawn(Target)) )
 			{
+				RangedTimer = 0;
 				GotoState('PreAttack');
 				break;
 			}
