@@ -56,7 +56,7 @@ defaultproperties
 	// have shield initially ready
 	RangedCounter=3
 	// 25% chance to summon (shield) before reaching MaxFreeRanged
-	SummonChance=0.20
+	SummonChance=0.25
 	// 25% chance to stomp (kill shield)
-	StompChance=0.20
+	StompChance=0.25
 }

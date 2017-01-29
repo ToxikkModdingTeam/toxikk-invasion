@@ -22,6 +22,8 @@ var bool bPreWaveCountdown;
 /** Server Replicated - Remaining monsters count for wave. Only valid once spawn phase is over. -1 = not valid */
 var int RemainingMonsters;
 
+var ParticleSystem ResourcesRef;
+
 Replication
 {
 	if ( bNetInitial )
@@ -172,4 +174,6 @@ simulated event ReplicatedEvent(Name VarName)
 defaultproperties
 {
 	RemainingMonsters=-1
+
+	ResourcesRef=ParticleSystem'InfekktedResources.FX.PS_Orb1'
 }

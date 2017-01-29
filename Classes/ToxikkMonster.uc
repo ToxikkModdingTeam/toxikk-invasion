@@ -1433,8 +1433,9 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 	// lock to attacker
 	if ( ToxikkMonsterController(Controller) != None && InstigatedBy != None && InstigatedBy.Pawn != None )
 	{
-		if ( ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn) )
-			SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
+		//if ( ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn) )
+			//SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
+		ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn);
 	}
 
 	if ( Damage <= 0 )

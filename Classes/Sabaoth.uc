@@ -166,7 +166,7 @@ DefaultProperties
 
 	bHasRanged=true
 	MissileClass=Class'SabaothBall'
-	RangedDelay=5.0
+	RangedDelay=0.5
 	AttackDistance=150
 	RangedAttackDistance=2500
 	RangedAttackAnims(0)=Attack1
