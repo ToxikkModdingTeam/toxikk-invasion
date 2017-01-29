@@ -684,6 +684,12 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*14),ALIGN_Left,ALIGN_Top,"Target Pos:"@string(ToxikkMonsterController(Controller).Target.Location),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*15),ALIGN_Left,ALIGN_Top,"Pos:"@string(Location),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*16),ALIGN_Left,ALIGN_Top,"RangedTimer:"@string(ToxikkMonsterController(Controller).RangedTimer),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		
+		if (IsA('InvulHunter'))
+			class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*17),ALIGN_Left,ALIGN_Top,"RangedCounter:"@string(InvulController(Controller).RangedCounter),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		else
+			class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*17),ALIGN_Left,ALIGN_Top,"RangedCounter: ---",true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
 		// Draw stuff on junk
 		if (ToxikkMonsterController(Controller).Target != None)

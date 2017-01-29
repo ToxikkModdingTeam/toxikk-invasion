@@ -17,10 +17,10 @@ simulated function RangedException()
 	if ( !InvulHunter(Pawn).bInvincible )
 	{
 		RangedCounter++;
-		if ( RangedCounter >= MaxFreeRanged || FRand() <= SummonChance )
+		if ( RangedCounter >= MaxFreeRanged || FRand() > 1.0-SummonChance )
 			GotoState('Summon');
 	}
-	else if ( FRand() <= StompChance )
+	else if ( FRand() > 1.0-StompChance )
 	{
 		RangedCounter = 0;
 		GotoState('Stomp');
@@ -52,11 +52,11 @@ Begin:
 
 defaultproperties
 {
-	MaxFreeRanged=4
+	MaxFreeRanged=3
 	// have shield initially ready
-	RangedCounter=4
+	RangedCounter=3
 	// 25% chance to summon (shield) before reaching MaxFreeRanged
-	SummonChance=0.25
+	SummonChance=0.20
 	// 25% chance to stomp (kill shield)
-	StompChance=0.25
+	StompChance=0.20
 }

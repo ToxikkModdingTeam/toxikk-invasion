@@ -210,10 +210,10 @@ state PreAttack
 				GotoState('RangedAttack');
 		else
 		{
-				if (Target != None)
-					GotoState('ChasePlayer');
-				else
-					GotoState('Wander');
+			if (Target != None)
+				GotoState('ChasePlayer');
+			else
+				GotoState('Wander');
 		}
 }
 
@@ -663,6 +663,7 @@ state ChasePlayer
 			// OTHERWISE, CAN WE RANGED ATTACK?
 			else if ( CanDoRanged(Pawn,Pawn(Target)) )
 			{
+				RangedTimer = 0;
 				GotoState('PreAttack');
 				break;
 			}

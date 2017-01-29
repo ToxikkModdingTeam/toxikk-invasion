@@ -5,29 +5,23 @@
 // ----------------
 // by Chatouille
 //================================================================
-class BruiserBall extends MonsterProjectile;
+class BruiserBall extends HellknightBall;
 
 defaultproperties
 {
-	ProjectileLightClass=class'Cruzade.CRZScionLaserProjectileLight'
-	ExplosionLightClass=class'Cruzade.CRZScionRifleMuzzleFlashLight'
-
-	ProjFlightTemplate=ParticleSystem'Laser_Beams.Effects.P_Laser_Beam'
-
+	ProjectileLightClass=Class'ImpLight'
+	ExplosionLightClass=Class'ImpLightBoom'
+	
+	ProjFlightTemplate=ParticleSystem'Doom3Monsters.Imp.Particles.imp_fireball_particles'
 	ProjExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_Impact'
 	ProjExplosionTemplateOnPawn=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_PawnImpact'
-	ProjWaterExplosionTemplate=ParticleSystem'ScionRifle.Effects.P_WP_ScionRifle_UnderWaterImpact'
 
-	ExplosionSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_ImpactCue'
-	WaterSplashSound=SoundCue'Snd_ScionRifle.SoundCues.A_Weapon_ScionRifle_Impact_WaterCue'
-
-	Speed=1000
-	MaxSpeed=2500
+	Speed=500
+	MaxSpeed=1000
 	AccelRate=3000
+	Damage=30.000000
 
-	Damage=30
-	MomentumTransfer=0
-	MyDamageType=Class'IFDmgType_Monster'
+	ProjScale=1.5
 
-	ProjScale=1.0
+	MyDamageType=Class'IFDmgType_HellknightBall'
 }
