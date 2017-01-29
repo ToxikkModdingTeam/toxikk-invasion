@@ -1,9 +1,9 @@
 
-`define DEBUG_NOWAVES 1
+`define DEBUG_NOWAVES
 
 `define DEBUG_MONSTER_STATES
 
-`define DEBUG_MONSTER_TARGET 1
+`define DEBUG_MONSTER_TARGET
 
 
 
