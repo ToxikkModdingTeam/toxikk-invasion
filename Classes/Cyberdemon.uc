@@ -179,7 +179,7 @@ DefaultProperties
 	
 	SightAnims(0)=Sight
 	
-	SightChance=0.0
+	SightChance=1.0
 	
 	SightRadius=1.0
 	

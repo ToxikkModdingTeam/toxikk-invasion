@@ -50,7 +50,6 @@ simulated function TryTeleport()
 		bWaitingToTeleport = true;
 		SetTimer(LatentTeleportTime,false,'ForceTeleport');
 		GotoState('Invisible');
-		Wraith(Pawn).PlaySound(Wraith(Pawn).TeleportOutSound);
 		Wraith(Pawn).SetCloaked(true);
 	}
 	else
@@ -76,22 +75,22 @@ simulated function DoTeleport()
 	
 	if (TelDes != Pawn.Location)
 	{
-		if (!bLatentTeleport)
-			Wraith(Pawn).TeleportBeam(Pawn.Location,TelDes);
-		else
+		if ( bLatentTeleport )
+		{
+			Wraith(Pawn).SetLocation(TelDes);
 			Wraith(Pawn).SetCloaked(false);
-			
-		Wraith(Pawn).SetLocation(TelDes);
-		
-		if (bLatentTeleport)
-			Wraith(Pawn).PlaySound(Wraith(Pawn).TeleportInSound);
-		
+			bLatentTeleport = false;
+		}
+		else
+		{
+			Wraith(Pawn).TeleportBeam(Pawn.Location,TelDes);
+			Wraith(Pawn).SetLocation(TelDes);
+		}
+
 		if (Target != None)
 			GotoState('ChasePlayer');
 		else
 			GotoState('Wander');
-			
-		bLatentTeleport = false;
 	}
 }
 

@@ -1322,12 +1322,15 @@ event Landed(vector HitNormal, Actor FloorActor)
 // When we touch another actor, stop lunging
 event Bump(Actor Other, PrimitiveComponent OtherComp, Vector HitNormal)
 {
+	Super.Bump(Other, OtherComp, HitNormal);
+
 	if ( Role == ROLE_Authority && bIsLunging && Pawn(Other)!=None && Controller!=None && Other == ToxikkMonsterController(Controller).Target )
 	{
 		bIsLunging = false;
 		Pawn(Other).TakeDamage(LungeDamage, Controller, Other.Location, HitNormal, class'IFDmgType_Melee');
 	}
-	Super.Bump(Other, OtherComp, HitNormal);
+	else if ( Role == ROLE_Authority && Pawn(Other) != None && ToxikkMonsterController(Controller) != None )
+		ToxikkMonsterController(Controller).LockOnTo(Pawn(Other));
 }
 
 // Animnotify, play a footstep sound

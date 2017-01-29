@@ -151,7 +151,7 @@ State PreWaveCountdown
 		local Controller C;
 		local int i;
 
-`if(`DEBUG_MONSTER_STATES)
+`if(`DEBUG_NOWAVES)
 		GRI.bStopCountDown = true;
 		return;
 `endif

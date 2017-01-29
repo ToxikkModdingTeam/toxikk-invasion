@@ -6,82 +6,54 @@ Class Wraith extends ToxikkMonster;
 var				ParticleSystem			TeleportFXTemplate;
 var				SoundCue				TeleportInSound, TeleportOutSound;
 
+var RepNotify bool bCloaked;
+
+Replication
+{
+	if ( bNetDirty )
+		bCloaked;
+}
+
 // Spawn a decorative beam from one spot to another, only for instant teleports
-unreliable client function TeleportBeam(vector StartLoc, vector EndLoc)
+function TeleportBeam(vector StartLoc, vector EndLoc)
 {
 	local ParticleSystemComponent E;
-	local TemporarySound TS;
 
 	E = WorldInfo.MyEmitterPool.SpawnEmitter(TeleportFXTemplate, StartLoc);
 	E.SetVectorParameter('BeamEnd', EndLoc);
 	E.SetDepthPriorityGroup(SDPG_World);
 
-	TS = Spawn(Class'TemporarySound',,,StartLoc);
-	TS.PlaySound(TeleportOutSound);
-	TS.Destroy();
-	
-	TS = Spawn(Class'TemporarySound',,,EndLoc);
-	TS.PlaySound(TeleportInSound);
-	TS.Destroy();
+	PlaySound(TeleportOutSound, false,,, StartLoc);
+	PlaySound(TeleportInSound, false,,, EndLoc);
 }
 
-// Called serverside for delayed teleports
-simulated function SetCloaked(bool bCloaked)
+// Delayed teleports
+simulated function SetCloaked(bool NewCloaked)
 {
-	// SetHidden will pretty much hide the monster anyway
-	// SetCloaked(bCloaked);
-	
-	SetHidden(bCloaked);
-	
-	ControlAnimLock(bCloaked);
-	
-	if (bCloaked)
-		SetCollision(false,false);
-	else
-		SetCollision(true,true);
-}
-
-reliable client function ControlAnimLock(bool bLock)
-{
-	if (Health <= 0)
-		return;
-		
-	if (bLock)
-		DeathBlender.SetBlendTarget(1.0,0.0);
-	else
-		DeathBlender.SetBlendTarget(0.0,0.0);
-}
-
-// Clientside effects, used for delayed cloaks
-/*
-reliable client function SetCloaked(bool bCloaked)
-{
-	if (WorldInfo.NetMode != NM_DedicatedServer)
+	bCloaked = NewCloaked;
+	if ( Role == ROLE_Authority )
 	{
-		if (bCloaked)
-		{
-			Mesh.CastShadow = false;
-			Mesh.bCastDynamicShadow = false;
-			ReattachMesh();
-			Mesh.SetHidden(true);
-		}
-		else
-		{
-			UpdateShadowSettings(!class'Engine'.static.IsSplitScreen() && class'UTPlayerController'.default.PawnShadowMode == SHADOW_All);
-			Mesh.SetHidden(false);
-		}
+		SetHidden(bCloaked);
+		SetCollision(!bCloaked, !bCloaked);
+	}
+
+	if ( WorldInfo.NetMode != NM_DedicatedServer )
+	{
+		if ( Health > 0 )
+			DeathBlender.SetBlendTarget(bCloaked ? 1.0 : 0.0, 0.0);
+
+		PlaySound(bCloaked ? TeleportInSound : TeleportOutSound, true);
 	}
 }
-*/
 
-// From CRZPawn
-/*
-simulated function ReattachMesh()
+simulated event ReplicatedEvent(Name VarName)
 {
-	Class'Cruzade.CRZPawn'.Static.DetachMeshComponentsOnActor(self,AllComponents);
-	Class'Cruzade.CRZPawn'.Static.AttachMeshComponentsOnActor(self,AllComponents);
+	if ( VarName == 'bCloaked' )
+		SetCloaked(bCloaked);
+	else
+		Super.ReplicatedEvent(VarName);
 }
-*/
+
 
 DefaultProperties
 {

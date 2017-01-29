@@ -30,6 +30,8 @@ var			float			SmallBoxSize;
 var			UDKJumpPad		PreviousPad;				// The jump pad that we just touched
 var			bool			bExitPadState;				// If true, we need to go back to roaming
 
+var array<Pawn> KnownPlayers;
+
 function vector PosPlusHeight(vector Pos)
 {
 	local float CR, CH;
@@ -126,43 +128,65 @@ function bool LockOnTo(Pawn Seen)
 
 	// Uncomment to force this monster into wander
 	//return;
-	
+
 	if (Seen == None)
 		return false;
-		
+
 	if (Target != Seen)
 	{
 		// Never lock onto other monsters, or ourselves
 		if (ToxikkMonster(Seen) != None || Seen == Pawn)
 			return false;
 
+		`DEBUG_MONSTER_TARGET_LOG("[D]" @ Name @ "LockOnTo: (Target=" $ (Target != None ? String(Target.Name) : "None") $ ") vs. (Seen=" $ Seen.Name $ ")");
+
 		// Don't change target if current Target is better/easier than Seen
-		if ( Pawn(Target) != None && LineOfSightTo(Target) )
+		if ( Pawn(Target) != None )
 		{
-			if ( LineOfSightTo(Seen) )
+			if ( LineOfSightTo(Target) )
 			{
-				// Both have LoS, check which one is most in front, but also favor closer target
-				MyRot = Vector( Pawn.Rotation.yaw*Rot(0,1,0) );
-				Dist1 = VSize(Target.Location - Pawn.Location);
-				Dist2 = VSize(Seen.Location - Pawn.Location);
-				Dot1 = 3.0 + (MyRot Dot (Target.Location-Pawn.Location)/Dist1);
-				Dot2 = 3.0 + (MyRot Dot (Seen.Location-Pawn.Location)/Dist2);
-				if ( Dot1/Sqrt(Dist1) > Dot2/Sqrt(Dist2) )
+				if ( LineOfSightTo(Seen) )
+				{
+					// Both have LoS, check which one is most in front, but also favor closer target
+					MyRot = Vector( MakeRotator(0, Pawn.Rotation.Yaw, 0) );
+					Dist1 = VSize(Target.Location - Pawn.Location);
+					Dist2 = VSize(Seen.Location - Pawn.Location);
+					Dot1 = MyRot Dot (Target.Location-Pawn.Location)/Dist1;
+					Dot2 = MyRot Dot (Seen.Location-Pawn.Location)/Dist2;
+					`DEBUG_MONSTER_TARGET_LOG("[D]    Both have LoS (Dot="
+						$ Dot1 @ "Dist=" $ Dist1 @ "Score=" $ ((3.0+Dot1)/Sqrt(Dist1)) $ ") vs. (Dot="
+						$ Dot2 @ "Dist=" $ Dist2 @ "Score=" $ ((3.0+Dot2)/Sqrt(Dist2)) $ ")");
+					if ( (3.0+Dot1)/Sqrt(Dist1) > (3.0+Dot2)/Sqrt(Dist2) )
+					{
+						`DEBUG_MONSTER_TARGET_LOG("[D]    Target is better --> keeping Target");
+						return false;
+					}
+					else
+						`DEBUG_MONSTER_TARGET_LOG("[D]    Seen is better --> targetting Seen");
+				}
+				// Target has LoS but not Seen, keep Target
+				else
+				{
+					`DEBUG_MONSTER_TARGET_LOG("[D]    Target has better LoS --> keeping Target");
 					return false;
+				}
 			}
-			// Target has LoS but not Seen, keep Target
 			else
-				return false;
+				`DEBUG_MONSTER_TARGET_LOG("[D]    Target doesn't have LoS --> targetting Seen");
 		}
-		// Neither have LoS, keep the most recent (==Seen)
+		else
+			`DEBUG_MONSTER_TARGET_LOG("[D]    Target isn't a pawn --> targetting Seen");
 
 		Target = Seen;
 		ToxikkMonster(Pawn).SeenSomething();
 
 		LastTimeSomethingHappened = WorldInfo.TimeSeconds;
 
-		if (FRand() >= ToxikkMonster(Pawn).SightChance)
+		if ( KnownPlayers.Find(Target) == INDEX_NONE && FRand() > 1.0-ToxikkMonster(Pawn).SightChance )
+		{
+			KnownPlayers.AddItem(Seen);
 			GotoState('Sight');
+		}
 		else
 			GotoState('ChasePlayer');
 	}

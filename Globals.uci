@@ -1,5 +1,12 @@
 
-`define DEBUG_MONSTER_STATES 1
+`define DEBUG_NOWAVES 1
+
+`define DEBUG_MONSTER_STATES
+
+`define DEBUG_MONSTER_TARGET 1
+
+
+
 
 `if(`DEBUG_MONSTER_STATES)
 	`define DEBUG_MONSTER_STATE `Log("[D] Entering state " $ String(GetStateName()) $ " (from " $ Prev $ ")");
@@ -7,4 +14,11 @@
 `else
 	`define DEBUG_MONSTER_STATE
 	`define DEBUG_MONSTER_STATE_DECL
+`endif
+
+
+`if(`DEBUG_MONSTER_TARGET)
+	`define DEBUG_MONSTER_TARGET_LOG(text) { `Log(`text); }
+`else
+	`define DEBUG_MONSTER_TARGET_LOG(text)
 `endif

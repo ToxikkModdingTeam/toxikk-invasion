@@ -273,7 +273,7 @@ DefaultProperties
 	
 	StompScale=5.0
 	SummonScale=5.0
-	SightChance=0.0
+	SightChance=1.0
 	
 	Mass=10000
 	
