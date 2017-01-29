@@ -137,7 +137,7 @@ function bool LockOnTo(Pawn Seen)
 			return false;
 
 		// Don't change target if current Target is better/easier than Seen
-		if ( Target != None && LineOfSightTo(Target) )
+		if ( Pawn(Target) != None && LineOfSightTo(Target) )
 		{
 			if ( LineOfSightTo(Seen) )
 			{
@@ -145,8 +145,8 @@ function bool LockOnTo(Pawn Seen)
 				MyRot = Vector( Pawn.Rotation.yaw*Rot(0,1,0) );
 				Dist1 = VSize(Target.Location - Pawn.Location);
 				Dist2 = VSize(Seen.Location - Pawn.Location);
-				Dot1 = 3.0 + (MyRot Dot (Target.Location-Pawn.Location)/Dist1, 0);
-				Dot2 = 3.0 + (MyRot Dot (Seen.Location-Pawn.Location)/Dist2, 0);
+				Dot1 = 3.0 + (MyRot Dot (Target.Location-Pawn.Location)/Dist1);
+				Dot2 = 3.0 + (MyRot Dot (Seen.Location-Pawn.Location)/Dist2);
 				if ( Dot1/Sqrt(Dist1) > Dot2/Sqrt(Dist2) )
 					return false;
 			}
