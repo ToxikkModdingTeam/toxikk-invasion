@@ -1,5 +1,5 @@
 
-`define DEBUG_NOWAVES
+`define DEBUG_NOWAVES 1
 
 `define DEBUG_MONSTER_STATES
 
