@@ -162,6 +162,9 @@ DefaultProperties
 	WalkingAnims(3)=Walk04
 	WalkingAnims(4)=Walk05
 	
+	HeadBone=head
+	HeadRadius=16.0
+	
 	SightAnims(0)=Sight
 	
 	MonsterName="Fat Zombie"

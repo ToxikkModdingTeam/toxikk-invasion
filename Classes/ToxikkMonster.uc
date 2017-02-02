@@ -21,6 +21,15 @@ var		int								FaceRate;
 var		string							MonsterName;
 
 //=============================================================================
+//--BOOM HEADSHOT--------------------------------------------------------------
+
+// Taken from UTPawn
+var (Headshots) float			HeadOffset;
+var (Headshots) float           HeadRadius;
+var (Headshots) float           HeadHeight;
+var (Headshots) name			HeadBone;
+
+//=============================================================================
 //--DEBUG----------------------------------------------------------------------
 
 var		bool							bUsingStraightPath;				// We're not using pathfinding, just a straight path to the player
@@ -1322,15 +1331,12 @@ event Landed(vector HitNormal, Actor FloorActor)
 // When we touch another actor, stop lunging
 event Bump(Actor Other, PrimitiveComponent OtherComp, Vector HitNormal)
 {
-	Super.Bump(Other, OtherComp, HitNormal);
-
 	if ( Role == ROLE_Authority && bIsLunging && Pawn(Other)!=None && Controller!=None && Other == ToxikkMonsterController(Controller).Target )
 	{
 		bIsLunging = false;
 		Pawn(Other).TakeDamage(LungeDamage, Controller, Other.Location, HitNormal, class'IFDmgType_Melee');
 	}
-	else if ( Role == ROLE_Authority && Pawn(Other) != None && ToxikkMonsterController(Controller) != None )
-		ToxikkMonsterController(Controller).LockOnTo(Pawn(Other));
+	Super.Bump(Other, OtherComp, HitNormal);
 }
 
 // Animnotify, play a footstep sound
@@ -1423,38 +1429,6 @@ reliable server function SeenSomething()
 	PlaySound(SightSound, TRUE);
 }
 
-// Spawn some blood and do hitmarker, plus pain
-event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
-{
-	local vector BloodMomentum;
-	
-	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
-	
-	// lock to attacker
-	if ( ToxikkMonsterController(Controller) != None && InstigatedBy != None && InstigatedBy.Pawn != None )
-	{
-		//if ( ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn) )
-			//SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
-		ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn);
-	}
-
-	if ( Damage <= 0 )
-		return;
-
-	// hitsounds/hitmarkers for player
-	if ( CRZPlayerController(InstigatedBy) != None )		
-		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);
-
-	// say "ouch"
-	if ( PainSound != None && FRand() >= PainSoundChance )
-		PlaySound(PainSound);
-
-	// spill some blood
-	BloodMomentum = Momentum;
-	if ( BloodMomentum.Z > 0 )
-		BloodMomentum.Z *= 0.5;
-}
-
 static function string GetMonsterName()
 {
 	if (default.MonsterName ~= "")
@@ -1463,7 +1437,66 @@ static function string GetMonsterName()
 		return default.MonsterName;
 }
 
+//--==--==--==--==--==--==--==--==--==--==--==
+// HEADSHOT FUNCTIONALITY - OOH, JUICY
+//--==--==--==--==--==--==--==--==--==--==--==
 
+//function bool IsLocationOnHead(const out ImpactInfo Impact, float AdditionalScale)
+function bool IsLocationOnHead(vector HitLoc, float AdditionalScale)
+{
+	local vector HeadLocation;
+	local float Distance;
+	
+	if (HeadBone == '' || HeadRadius < 0)
+		return False;
+
+	Mesh.ForceSkelUpdate();
+	HeadLocation = Mesh.GetBoneLocation(HeadBone) + vect(0,0,1) * HeadHeight;
+
+	// Find distance from head location to bullet vector
+	Distance = VSize(HitLoc - HeadLocation);
+	
+	`Log("IsLocationOnHead() - Distance was "$string(Distance)$" - HeadLocation: "$string(HeadLocation));
+	
+	return ( Distance < (HeadRadius * HeadScale * AdditionalScale) );
+}
+
+// Spawn some blood and do hitmarker, plus pain
+event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
+{
+	local vector BloodMomentum;
+	
+	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+	
+	// Lock onto the attacker, turn toward him
+	if ( ToxikkMonsterController(Controller) != None && InstigatedBy != None && InstigatedBy.Pawn != None )
+	{
+		if ( ToxikkMonsterController(Controller).LockOnTo(InstigatedBy.Pawn) )
+			SetDesiredRotation(Rotator(InstigatedBy.Pawn.Location - Location));
+	}
+
+	if ( Damage <= 0 )
+		return;
+
+	// Hitsounds/hitmarkers for player
+	if ( CRZPlayerController(InstigatedBy) != None )		
+		CRZPlayerController(InstigatedBy).ConfirmHit(Damage);
+
+	// Say "ouch"
+	if ( PainSound != None && FRand() >= PainSoundChance )
+		PlaySound(PainSound);
+
+	// Spill some blood
+	BloodMomentum = Momentum;
+	if ( BloodMomentum.Z > 0 )
+		BloodMomentum.Z *= 0.5;
+		
+	// WAS THIS A HEADSHOT?
+	if (IsLocationOnHead(HitLocation,0.0))
+		`Log("THIS WAS A HEADSHOT!");
+}
+
+//--==--==--==--==--==--==--==--==--==--==--==
 
 DefaultProperties
 {
@@ -1604,4 +1637,8 @@ DefaultProperties
 	bCanPickupInventory=false
 	
 	RotationRate=(Pitch=20000,Yaw=50000,Roll=20000)
+	
+	// If HeadRadius is < 0, cannot be headshotted
+	HeadRadius = -1
+	HeadScale = 1.0
 }
