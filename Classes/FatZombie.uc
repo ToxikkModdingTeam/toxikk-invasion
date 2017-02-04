@@ -14,6 +14,19 @@ replication
 		bDecayed, bHasWrench;
 }
 
+simulated event ReplicatedEvent(name VarName)
+{
+	super.ReplicatedEvent(VarName);
+	
+	// Show or hide intestines
+	if (VarName == 'bDecayed')
+		ControlIntestines(bDecayed);
+		
+	// Show or hide monkey wrench
+	if (VarName == 'bHasWrench')
+		ControlWrench(bHasWrench);
+}
+
 // Decide if we're decayed and if we have a wrench
 simulated function PostBeginPlay()
 {
