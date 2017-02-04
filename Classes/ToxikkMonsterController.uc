@@ -13,6 +13,7 @@ var float DistanceToPlayer;
 var rotator DesiredRot;
 var bool bCanRanged;
 var float RangedTimer;
+var actor LastReached;			// When we generate a new path, node 0 MUST NOT be the last one reached
 
 var bool bUseDetours;
 var int o;
@@ -344,6 +345,7 @@ simulated function Actor HackPath(Actor Toward, optional bool bDetour, optional 
 {
 	local Actor MT;
 	local float OldRadius, OldHeight;
+	local float SubDistance;
 
 	//1. backup monster values that will be modified
 	OldRadius = ToxikkMonster(Pawn).CylinderComponent.CollisionRadius;
@@ -355,10 +357,22 @@ simulated function Actor HackPath(Actor Toward, optional bool bDetour, optional 
 
 	//3. Call pathfinding
 	MT = FindPathToward(Toward,bDetour,MaxLength,bPartial);
-
+	
 	//4. Restore values
 	ToxikkMonster(Pawn).CylinderComponent.SetCylinderSize(OldRadius,OldHeight);
 	Pawn.bCanPickupInventory = false;
+	
+	// -- DELETE THE FUCKIN FIRST NODE IF WE'RE ALREADY CLOSE TO IT, might prevent getting stuck
+	if (RouteCache.Length > 1)
+	{
+		SubDistance = VSize(RouteCache[0].Location - Pawn.Location) - CylinderComponent(Pawn.CollisionComponent).CollisionRadius;
+		if (SubDistance <= 30 && ActorReachable(RouteCache[0]))
+		{
+			//`Log("REMOVED CACHE 0");
+			RouteCache.RemoveItem(RouteCache[0]);
+			MT = RouteCache[0];
+		}
+	}
 	
 	return MT;
 }
@@ -578,6 +592,9 @@ static function bool CanDoRanged(Pawn Parent, Pawn Targ)
 {
 	local float DistDifference;
 	
+	if (ToxikkMonster(Parent).bHeadless && ToxikkMonster(Parent).bNoHeadlessRanged)
+		return false;
+	
 	// Both have to be actual existing pawns
 	if (Parent == None || Targ == None || ToxikkMonster(Parent) == None)
 		return false;
@@ -651,6 +668,7 @@ state ChasePlayer
 
 		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
 		{
+			//`Log("BOTH CONDITIONS ARE TRUE");
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
 			ToxikkMonster(Pawn).bUsingStraightPath=true;
 			
@@ -670,7 +688,10 @@ state ChasePlayer
 			else
 			{
 				if (!IsUsingPad())
+				{
+					//`Log("MOVING TOWARD IN BOTH...");
 					MoveToward(Target, Target, 20.0f);
+				}
 			}
 		}
 		// Otherwise, use pathfinding
@@ -681,6 +702,16 @@ state ChasePlayer
 
 			// -- FIRST START WITH HACK PATH
 			MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
+			
+			if (LastReached != MoveTarget)
+				LastReached = MoveTarget;
+			else if (RouteCache.Length > 1)
+			{
+				RouteCache.RemoveItem(RouteCache[0]);
+				MoveTarget = RouteCache[0];
+				LastReached = MoveTarget;
+				//`Log("OVERRODE LASTREACHED");
+			}
 
 			// -- DOES A JUMP PAD EXIST?
 			if (MoveTarget != None)
@@ -718,6 +749,8 @@ state ChasePlayer
 				//GotoState('Wander');
 				//MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
+			`Log("WE MADE IT THIS FAR");
+			
 			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
 			{
 				`Log("SWAPPED TO CACHE 1");
@@ -745,7 +778,10 @@ state ChasePlayer
 				{
 					// If the player's within 200 units AND ON THE SAME LEVEL then just move toward them
 					if (tmp_Dist < 200 && OnSameLevel(Pawn,Target))
+					{
+						`Log("MOVING STRAIGHT TOWARD IT");
 						MoveToward(Target, Target, 20.0f);
+					}
 						
 					// If the movement target's destination is less than 200
 					// WHY WAS THIS ADDED I DON'T GET IT
@@ -758,13 +794,18 @@ state ChasePlayer
 					// Otherwise just move normally
 					else
 					{
+						// -- THIS IS WHERE IT GETS STUCK WHEN THE POINT IS RIGHT IN FRONT OF IT - WHY? CHECK REACHEDDESTINATION --
 						if (!IsUsingPad())
+						{
+							`Log("VERY BOTTOM STUCK POINT");
 							MoveToward(MoveTarget, MoveTarget, 20.0f);	
+						}
 					}
 				}
 			}
 			else
 			{
+				`Log("BLIND WALK");
 				ToxikkMonster(Pawn).bBlindWalk=true;
 				if (!IsUsingPad())
 					MoveToward(Target, Target, 20.0f);

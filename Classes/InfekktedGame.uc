@@ -21,6 +21,8 @@ var InfekktedConfig Conf;
 // Global variables
 //================================================
 
+var bool bShowHeads;
+
 //internal
 var InfekktedGRI GRI;
 var bool bPlayersWon;
@@ -1099,6 +1101,15 @@ function int CalcMatchXPForPlayer(CRZPlayerReplicationInfo PRI)
 //================================================
 // Misc
 //================================================
+
+// Head debugger - Mostly for solo
+exec function DebugHeads()
+{
+	local ToxikkMonster TM;
+	
+	bShowHeads = !bShowHeads;
+	forEach WorldInfo.DynamicActors(class'ToxikkMonster',TM) { TM.bDrawHead = bShowHeads; }
+}
 
 // admin/standalone command - mostly for debugging
 exec function Summon(class<ToxikkMonster> MC, optional bool bBoss=false)

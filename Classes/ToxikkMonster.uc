@@ -24,10 +24,23 @@ var		string							MonsterName;
 //--BOOM HEADSHOT--------------------------------------------------------------
 
 // Taken from UTPawn
-var (Headshots) float			HeadOffset;
-var (Headshots) float           HeadRadius;
-var (Headshots) float           HeadHeight;
-var (Headshots) name			HeadBone;
+var (Headshots) float							HeadOffset;
+var (Headshots) float           				HeadRadius;
+var (Headshots) float           				HeadHeight;
+var (Headshots) name							HeadBone, NeckBone;
+var (Headshots) int								HeadHealth;
+var (Headshots) DrawSphereComponent				HeadDebugger;
+var (Headshots) bool							bDrawHead;
+var (Headshots) bool							bHeadless;				// Serverside
+var (Headshots) SoundCue						HSCue_Impact, HSCue_Decap;
+var (Headshots) ParticleSystem					HSTemp_Juicy, HSTemp_Normal;
+var (Headshots) StaticMeshComponent				StumpComponent;
+var (Headshots) ParticleSystemComponent			SpewComponent;
+var (Headshots) Rotator							SpewRotator;
+var (Headshots) bool							bNoHeadlessRanged;		// If we're headless, we can't attack at all
+var (Headshots)	int								HeadlessSpread;			// How inaccurate we are when we're headless
+var (Headshots)	float							BleedOutRate;			// How quickly we take damage from bleeding out
+var (Headshots) int								BleedOutDamage;			// How much damage to take when bleeding out
 
 //=============================================================================
 //--DEBUG----------------------------------------------------------------------
@@ -35,6 +48,7 @@ var (Headshots) name			HeadBone;
 var		bool							bUsingStraightPath;				// We're not using pathfinding, just a straight path to the player
 var		bool							bBlindWalk;						// We're trying to use pathfinding but there's no MoveTarget
 var		bool							bUsingJumpPad;					// Walking toward a jump pad
+var		bool							bReachable;						// Target is reachable?
 var		float							JumpPadDelay;					// A "cooldown" for using a jump pad
 
 //=============================================================================
@@ -238,7 +252,7 @@ replication
 		bIsBossMonster;
 
 	if (bNetDirty || bNetInitial)
-		bIsCrawling;
+		bIsCrawling, bHeadless;
 
 	if ( bNetDirty && !bNetInitial )
 		ForcedAnim;
@@ -261,6 +275,15 @@ simulated function PostBeginPlay()
 	{
 		FakeComponent.LightEnvironment.SetEnabled(true); // just in case init the mesh light environment
 		LEC.SetEnabled(true); // now the dynamic light component
+		
+		FakeComponent.AttachComponentToSocket(HeadDebugger,HeadBone);
+		FakeComponent.AttachComponentToSocket(StumpComponent,NeckBone);
+		FakeComponent.AttachComponentToSocket(SpewComponent,NeckBone);
+		SpewComponent.SetRotation(SpewRotator);
+		
+		StumpComponent.SetLightEnvironment(FakeComponent.LightEnvironment);
+		
+		SpewComponent.SetTemplate(HSTemp_Juicy);
 
 		SetTimer(0.01, false, 'PostNetBeginPlay');  // a bit hacky - ideally it would be the first tick after PostBeginPlay
 	}
@@ -270,7 +293,7 @@ simulated function PostBeginPlay()
 		SetTimer(1.0, false, 'CheckController');
 
 		SetTimer(ChatterTime, true, 'DoChatter'); //TODO: can we do this on client-side ?
-		
+
 		/* debug
 		// Spawn an emitter at every pathnode
 		ForEach AllActors(Class'NavigationPoint',NP)
@@ -475,6 +498,21 @@ simulated function Tick(float Delta)
 			}
 		}
 	}
+	
+	if (WorldInfo.NetMode != NM_DedicatedServer)
+	{
+		if (bDrawHead)
+		{
+			HeadDebugger.SphereRadius = HeadRadius * HeadScale;
+			if (HeadDebugger.HiddenGame)
+				HeadDebugger.SetHidden(false);
+		}
+		else
+		{
+			if (!HeadDebugger.HiddenGame)
+				HeadDebugger.SetHidden(true);
+		}
+	}
 
 	// If we're crawling, set the crawl blender accordingly
 	if (CrawlBlender != None)
@@ -615,15 +653,33 @@ function rotator rTurn(rotator rHeading,rotator rTurnAngle)
 
 // HAVE WE REACHED OUR DESTINATION?
 // Mess with this function, this could potentially be used to move toward the jump target mid-air
-/*
+
 simulated function bool ReachedDestination(Actor Goal)
 {
-	if (UDKJumpPad(Goal) != None && FastTrace(UDKJumpPad(Goal).JumpTarget.Location,Location))
-		return true;
-	else
-		return super.ReachedDestination(Goal);
+	local bool RD;
+	//local float DD;
+	
+	//DD = VSize(Goal.Location - Location) - CylinderComponent(CollisionComponent).CollisionRadius;
+	
+	//if (UDKJumpPad(Goal) != None && FastTrace(UDKJumpPad(Goal).JumpTarget.Location,Location))
+	
+	// -- OVERRIDE FOR GETTING STUCK --
+	// Generally speaking it gets stuck at a distance of 20-30, but this might need testing
+	
+	//`Log("GOAL IS "$string(Goal)$" - DD:"@string(DD));
+	
+	//if (Controller.ActorReachable(Goal) && DD <= 30.0)
+	//{
+		//`Log("BYPASSED STUCK!");
+		//return true;
+	//}
+	
+	RD = super.ReachedDestination(Goal);
+	`Log("ReachedDestination:"@string(RD));
+	
+	return RD;
 }
-*/
+
 
 // WE TOUCHED SOMETHING
 simulated event Touch (Actor Other, PrimitiveComponent OtherComp, Object.Vector HitLocation, Object.Vector HitNormal)
@@ -674,7 +730,7 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		StartY = Canvas.ClipY * 0.35;
 		YL = YL + 12; // Add padding
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY,ALIGN_Left,ALIGN_Top,"Viewing"@GetMonsterName(),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
-		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+YL,ALIGN_Left,ALIGN_Top,"Straightline path:"@string(bUsingStraightPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+YL,ALIGN_Left,ALIGN_Top,"Straightline path (Same level, reachable):"@string(bUsingStraightPath),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*2),ALIGN_Left,ALIGN_Top,"Blind walk:"@string(bBlindWalk),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*3),ALIGN_Left,ALIGN_Top,"Using jump pad:"@string(ToxikkMonsterController(Controller).IsUsingPad()),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
@@ -699,6 +755,10 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 			class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*17),ALIGN_Left,ALIGN_Top,"RangedCounter:"@string(InvulController(Controller).RangedCounter),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		else
 			class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*17),ALIGN_Left,ALIGN_Top,"RangedCounter: ---",true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+			
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*18),ALIGN_Left,ALIGN_Top,"ActorReachable():"@string(Controller.ActorReachable(ToxikkMonsterController(Controller).MoveTarget)),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*19),ALIGN_Left,ALIGN_Top,"OnSameLevel():"@string(ToxikkMonsterController(Controller).OnSameLevel(self,ToxikkMonsterController(Controller).MoveTarget)),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
+		class'InfekktedHUD'.Static.DrawTextPlus(Canvas,32,StartY+(YL*20),ALIGN_Left,ALIGN_Top,"Distance,CRadius,Sub:"@string(VSize(ToxikkMonsterController(Controller).MoveTarget.Location - Location))$","@string(CylinderComponent(CollisionComponent).CollisionRadius)$","$string(VSize(ToxikkMonsterController(Controller).MoveTarget.Location - Location) - CylinderComponent(CollisionComponent).CollisionRadius),true,64,255,64,class'CRZHud'.default.GlowFonts[0]);
 		
 		// Draw stuff on junk
 		if (ToxikkMonsterController(Controller).Target != None)
@@ -711,6 +771,8 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		{
 			DrawSymbolOn(string(l),Controller.RouteCache[l],Canvas,255,255,64,ALIGN_Center,class'CRZPawn'.default.BeaconFont);
 		}
+		
+		DrawSymbolOn("MT",ToxikkMonsterController(Controller).MoveTarget,Canvas,64,255,64,ALIGN_Center,class'CRZPawn'.default.BeaconFont);
 	}
 }
 
@@ -1233,10 +1295,41 @@ simulated event ReplicatedEvent(Name VarName)
 {
 	if ( VarName == 'ForcedAnim' )
 		PlayForcedAnim(ForcedAnim.AnimName);
+	// THE HEAD?
+	else if (VarName == 'bHeadless')
+		RemoveHead();
 	else
 		Super.ReplicatedEvent(VarName);
+	
 }
+// -- CLIENTSIDE
+simulated function RemoveHead()
+{
+	local int l;
+	local HeadChunk HC;
+	local Rotator SpawnRot;
+	local Vector VV;
 
+	FakeComponent.HideBoneByName(HeadBone,PBO_Disable);
+	StumpComponent.SetHidden(false);
+	SpewComponent.ActivateSystem();
+	
+	// SPAWN SOME LIL CHICKEN NUGGIES
+	for (l=0; l<4; l++)
+	{
+		SpawnRot = QuatToRotator(Mesh.GetBoneQuaternion(NeckBone));
+		HC = Spawn(Class'HeadChunk', self,, Mesh.GetBoneLocation(NeckBone), SpawnRot);
+		
+		VV.X = RandRange(-200,200);
+		VV.Y = RandRange(-200,200);
+		VV.Z = RandRange(200,300);
+		
+		HC.Velocity = VV;
+		HC.RotationRate.Yaw = Rand(100000);
+		HC.RotationRate.Pitch = Rand(100000);
+		HC.RotationRate.Roll = Rand(100000);
+	}
+}
 
 //================================================
 // Custom animations (attack, sight...)
@@ -1412,6 +1505,13 @@ simulated function DoShot(name BoneName)
 		// Once we figure out the starting positions, shoot projectiles toward the player
 		FinalRotation = rotator(Normal(ToxikkMonsterController(Controller).Target.Location - FinalLoc));
 	
+		if (bHeadless)
+		{
+			FinalRotation.Pitch += RandRange(-HeadlessSpread,HeadlessSpread);
+			FinalRotation.Roll += RandRange(-HeadlessSpread,HeadlessSpread);
+			FinalRotation.Yaw += RandRange(-HeadlessSpread,HeadlessSpread);
+		}
+		
 		// SPAWN THE ACTUAL PROJECTILE
 		Proj = Spawn(MissileClass,Controller,,FinalLoc,FinalRotation);
 		Proj.Damage *= ProjDamageMult;
@@ -1442,31 +1542,65 @@ static function string GetMonsterName()
 //--==--==--==--==--==--==--==--==--==--==--==
 
 //function bool IsLocationOnHead(const out ImpactInfo Impact, float AdditionalScale)
-function bool IsLocationOnHead(vector HitLoc, float AdditionalScale)
+function bool IsLocationOnHead(vector HitLoc, vector HitDirection, float AdditionalScale)
 {
 	local vector HeadLocation;
 	local float Distance;
 	
-	if (HeadBone == '' || HeadRadius < 0)
+	if (HeadBone == '' || HeadRadius < 0 || bHeadless)
 		return False;
 
 	Mesh.ForceSkelUpdate();
 	HeadLocation = Mesh.GetBoneLocation(HeadBone) + vect(0,0,1) * HeadHeight;
 
 	// Find distance from head location to bullet vector
-	Distance = VSize(HitLoc - HeadLocation);
+	//Distance = VSize(HitLoc - HeadLocation);
+	Distance = PointDistToLine(HeadLocation, HitDirection, HitLoc);
 	
-	`Log("IsLocationOnHead() - Distance was "$string(Distance)$" - HeadLocation: "$string(HeadLocation));
+	`Log("IsLocationOnHead() - Distance was "$string(Distance)$" - HeadLocation: "$string(HeadLocation)$", Goal - "$string(HeadRadius * HeadScale * AdditionalScale));
 	
 	return ( Distance < (HeadRadius * HeadScale * AdditionalScale) );
+}
+
+simulated function BleedOut()
+{
+	local Vector V;
+	
+	`Log("BLEEDING");
+	TakeDamage(BleedOutDamage,None,FakeComponent.GetBoneLocation(HeadBone),V,None);
 }
 
 // Spawn some blood and do hitmarker, plus pain
 event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
 {
 	local vector BloodMomentum;
+	local float DamageMult;
 	
-	super.TakeDamage(Damage, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
+	DamageMult = 1.0;
+	
+	// WAS THIS A HEADSHOT?
+	if (IsLocationOnHead(HitLocation,Normal(Momentum),1.0) && Role == ROLE_Authority)
+	{
+		`Log("THIS WAS A HEADSHOT!");
+		PlaySound(HSCue_Impact,false,false);
+		HeadHealth -= Damage;
+		DamageMult = 0.5;
+	}
+	
+	if (HeadHealth < 0 && !bHeadless)
+	{
+		bHeadless = true;
+		PlaySound(HSCue_Decap,false,false);
+		
+		SetTimer(BleedOutRate,true,'BleedOut');
+		
+		if (WorldInfo.NetMode == NM_Standalone)
+			RemoveHead();
+			
+		`Log("DECAPITATED!");
+	}
+	
+	super.TakeDamage(Damage*DamageMult, InstigatedBy, HitLocation, Momentum, DamageType, HitInfo, DamageCauser);
 	
 	// Lock onto the attacker, turn toward him
 	if ( ToxikkMonsterController(Controller) != None && InstigatedBy != None && InstigatedBy.Pawn != None )
@@ -1490,13 +1624,11 @@ event TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector
 	BloodMomentum = Momentum;
 	if ( BloodMomentum.Z > 0 )
 		BloodMomentum.Z *= 0.5;
-		
-	// WAS THIS A HEADSHOT?
-	if (IsLocationOnHead(HitLocation,0.0))
-		`Log("THIS WAS A HEADSHOT!");
 }
 
 //--==--==--==--==--==--==--==--==--==--==--==
+
+
 
 DefaultProperties
 {
@@ -1641,4 +1773,44 @@ DefaultProperties
 	// If HeadRadius is < 0, cannot be headshotted
 	HeadRadius = -1
 	HeadScale = 1.0
+	Begin Object Class=DrawSphereComponent Name=HeadSphere
+		bDrawWireSphere=true
+		SphereColor=(R=0,B=0,G=255,A=255)
+		SphereSides=32
+		HiddenGame=False
+	End Object
+	
+	Components.Add(HeadSphere)
+	HeadDebugger = HeadSphere
+	
+	bHeadless = false
+	HeadHealth = 200
+	HSCue_Impact = SoundCue'InfekktedResources.SFX.headshot_crack_cue'
+	HSCue_Decap = SoundCue'InfekktedResources.SFX.headshot_decap_cue'
+	HSTemp_Juicy = ParticleSystem'InfekktedResources.FX.PS_Decapitation'
+	HSTemp_Normal = ParticleSystem'InfekktedResources.FX.PS_Decapitation_Juiceless'
+	
+	Begin Object Class=StaticMeshComponent Name=Stumped
+		StaticMesh=StaticMesh'InfekktedResources.FX.headshot_stump'
+		Scale=1.0
+		Translation=(X=0.0)
+		HiddenGame=True
+	End Object
+	Components.Add(Stumped)
+	StumpComponent = Stumped
+	
+	Begin Object Class=ParticleSystemComponent Name=SpewSpew
+		Template = ParticleSystem'InfekktedResources.FX.PS_Decapitation'
+		bAutoActivate = false;
+		Scale=1.0
+	End Object
+	Components.Add(SpewSpew)
+	SpewComponent = SpewSpew
+	
+	HeadlessSpread = 10000
+	
+	BleedOutDamage = 10
+	BleedOutRate = 1.0
+	
+	// FX.hsgib_1 , FX.hsgib_2, GibColor
 }

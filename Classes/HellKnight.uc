@@ -46,7 +46,7 @@ DefaultProperties
 	QuietFootstepSound=SoundCue'Doom3Monsters.HellKnight.VP.hk_quietstep_cue'
 	
     Begin Object Name=CollisionCylinder
-        CollisionHeight=+55.000000
+        CollisionHeight=+60.000000
 		CollisionRadius=+55.000000
 		bDrawBoundingBox=true
     End Object
@@ -136,4 +136,18 @@ DefaultProperties
 	Mass=2000
 	
 	MonsterName="Hell Knight"
+	
+	HeadBone=head
+	NeckBone=neck
+	HeadRadius=16.0
+	SpewRotator=(Pitch=16384,Roll=-16384)
+	HeadHealth = 400
+	
+	Begin Object Name=Stumped
+		Scale=5
+	End Object
+	
+	Begin Object Name=SpewSpew
+		Scale=2.0
+	End Object
 }

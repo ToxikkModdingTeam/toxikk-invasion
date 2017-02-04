@@ -38,20 +38,6 @@ simulated function PostBeginPlay()
 	}
 }
 
-// If our cosmetics vars change, update cosmetics
-simulated event ReplicatedEvent(name VarName)
-{
-	super.ReplicatedEvent(VarName);
-	
-	// Show or hide intestines
-	if (VarName == 'bDecayed')
-		ControlIntestines(bDecayed);
-		
-	// Show or hide monkey wrench
-	if (VarName == 'bHasWrench')
-		ControlWrench(bHasWrench);
-}
-
 // Intestines
 simulated function ControlIntestines(bool bShow)
 {
@@ -123,7 +109,7 @@ DefaultProperties
 		Translation=(Z=-2.0)
     End Object
     Mesh=MainMesh
-
+	
 	// How fast we run
     GroundSpeed=125.0
 
@@ -150,7 +136,7 @@ DefaultProperties
 	
 	PunchDamage=15
 	
-	Health=200
+	Health = 200
 	
 	AttackDistance=80
 
@@ -163,7 +149,15 @@ DefaultProperties
 	WalkingAnims(4)=Walk05
 	
 	HeadBone=head
-	HeadRadius=16.0
+	NeckBone=loneck
+	HeadRadius=8.0
+	SpewRotator=(Pitch=16384,Roll=-16384)
+	HeadHealth = 50
+	
+	Begin Object Name=Stumped
+		Scale=1.5
+		Translation=(Z=2.0)
+	End Object
 	
 	SightAnims(0)=Sight
 	

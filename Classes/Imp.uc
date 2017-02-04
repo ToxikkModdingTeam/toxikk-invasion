@@ -45,6 +45,10 @@ DefaultProperties
 	HandFireComponent = HandFire;
 	Components.Add(HandFire);
 	
+	Begin Object Name=CollisionCylinder
+        CollisionHeight=+50.000000
+    End Object
+	
 	// SKELETAL MESH
     Begin Object Name=MainMesh
         SkeletalMesh=SkeletalMesh'Doom3Monsters.Imp.imp_mesh'
@@ -66,7 +70,7 @@ DefaultProperties
 		bHasPhysicsAssetInstance=true
 		PhysicsAsset=PhysicsAsset'Doom3Monsters.Imp.imp_mesh_Physics'
 		PhysicsWeight=0.0
-		Translation=(Z=-1.0)
+		Translation=(Z=-2.0)
     End Object
     Mesh=MainMesh
 
@@ -133,4 +137,14 @@ DefaultProperties
 	MonsterName = "Imp"
 	
 	Mass=1000
+	
+	HeadBone=head
+	NeckBone=neck
+	HeadRadius=8.0
+	SpewRotator=(Pitch=16384,Roll=-16384)
+	HeadHealth = 80
+	
+	Begin Object Name=Stumped
+		Scale=1.5
+	End Object
 }
