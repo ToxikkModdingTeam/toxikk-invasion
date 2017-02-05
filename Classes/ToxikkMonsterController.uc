@@ -646,6 +646,9 @@ state ChasePlayer
 	{
 		super.Tick(Delta);
 
+		if (Pawn.Physics != PHYS_Flying)
+			Pawn.SetPhysics(PHYS_Flying);
+			
 		RangedTimer += Delta;
 	}
 	
@@ -749,7 +752,7 @@ state ChasePlayer
 				//GotoState('Wander');
 				//MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
-			`Log("WE MADE IT THIS FAR");
+			//`Log("WE MADE IT THIS FAR");
 			
 			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
 			{
