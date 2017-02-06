@@ -3,6 +3,64 @@
 //--==--==--==--==--==--==--==--==--==--==--==--==--==--==--==--==--==
 Class ToxikkMonsterController_Flying extends ToxikkMonsterController;
 
+var		Vector				FoundSpot;
+var 	int					o,p;
+
+// Uncomment this to use prototype wander
+/*
+auto state Wander
+{
+	// Change targets if we actually see the player in front of us
+	event SeePlayer(Pawn Seen)
+	{
+		super.SeePlayer(Seen);
+		LockOnTo(Seen);
+	}
+	
+	// If the player shoots then see him
+	event HearNoise(float Loudness, Actor NoiseMaker, optional name NoiseType)
+	{
+		if (CRZPawn(Noisemaker) != None)
+			LockOnTo(Pawn(NoiseMaker));
+		if (Weapon(NoiseMaker) != None)
+			LockOnTo(Weapon(NoiseMaker).Instigator);
+	}
+	
+	Begin:
+		BeginNotify("Wander");
+		// `Log("Begin wander");
+		if (RoamTarget == None || Pawn.ReachedDestination(RoamTarget))
+			RoamTarget = FindRandomDest();
+		
+		// Don't use HackPath here, it's okay if we can't use jump pads
+		Target = FindPathToward(RoamTarget,bUseDetours);
+		
+		// While we still have nodes...
+		while (RouteCache.Length > 0)
+		{
+			FoundSpot = RouteCache[0].Location;
+			FoundSpot.Z += ToxikkMonster(Pawn).DistanceOffGroundMin;
+			
+			// Go to the desired spot (arbitary number)
+			while (VSize(FoundSpot-Pawn.Location) >= 60)
+			{
+				Pawn.Velocity = Normal(FoundSpot - Pawn.Location) * Pawn.AirSpeed * 2.0;
+				Pawn.SetDesiredRotation(rotator(FoundSpot - Pawn.Location),false,false,0.05);
+				sleep(0.03);
+			}
+			
+			RouteCache.RemoveItem(RouteCache[0]);
+			sleep(0.01);
+		}
+		
+		// Find a new path
+		Sleep(0.1);
+		
+	if (Pawn(Target) == None)
+		GotoState('Wander');
+}
+*/
+
 state ChasePlayer
 {
 	`DEBUG_MONSTER_STATE_DECL
@@ -27,8 +85,8 @@ state ChasePlayer
 		//NOTE: This needs to be reworked - the line of sight should be separate from the "on same level" check.
 		// For ranged attacks, you need to check line of sight, but we don't care if it is on same level or not.
 		// The "on same level" check is only relevant for melee and for MoveToward.
-
-		if (ActorReachable(Target) && OnSameLevel(Pawn,Target))
+		
+		if (ActorReachable(Target))
 		{
 			//`Log("BOTH CONDITIONS ARE TRUE");
 			DistanceToPlayer = VSize(Target.Location - Pawn.Location);
@@ -63,6 +121,7 @@ state ChasePlayer
 			MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
 			
 			// -- CHECKS TO PREVENT IT FROM GETTING STUCK --
+			/*
 			if (LastReached != MoveTarget)
 				LastReached = MoveTarget;
 			else if (RouteCache.Length > 1)
@@ -71,22 +130,15 @@ state ChasePlayer
 				MoveTarget = RouteCache[0];
 				LastReached = MoveTarget;
 			}
+			*/
 			
 			// If we can't reach the target then just go back to wander
-			// -- TODO: Flying pawns can really reach the target pretty much anywhere, maybe forcefully find a way?
+			// -- TODO: Flying pawns can really reach the target pretty much anywhere, maybe forcefully find a way? --
 			if (MoveTarget == None)
 			{
 				Target = None;
 				GotoState('Wander');
 			}
-			
-			//MoveTarget = FindPathToward(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
-				
-			//Target = None;
-			//GotoState('Wander');
-			//MoveTarget = HackPath(Target,bUseDetours,PerceptionDistance + (PerceptionDistance/2));
-			
-			//`Log("WE MADE IT THIS FAR");
 			
 			if (VSize(MoveTarget.Location - Pawn.Location) <= Pawn.CylinderComponent.CollisionRadius)
 			{
@@ -114,19 +166,14 @@ state ChasePlayer
 				}
 				else
 				{
+					FoundSpot = MoveTarget.Location;
+					FoundSpot.Z += ToxikkMonster(Pawn).DistanceOffGroundMin;
 					// If the player's within 200 units AND ON THE SAME LEVEL then just move toward them
-					if (tmp_Dist < 200 && OnSameLevel(Pawn,Target))
-					{
-						`Log("MOVING STRAIGHT TOWARD IT");
-						MoveToward(Target, Target, 20.0f);
-					}
-					// Otherwise just move normally
-					else
-					{
-						// -- THIS IS WHERE IT GETS STUCK WHEN THE POINT IS RIGHT IN FRONT OF IT - WHY? CHECK REACHEDDESTINATION --
-						`Log("VERY BOTTOM STUCK POINT");
-						MoveToward(MoveTarget, MoveTarget, 20.0f);	
-					}
+					//if (tmp_Dist < 200)
+					//{
+					`Log("USING MOVETO...");
+					MoveTo(FoundSpot, MoveTarget, 20.0f);	
+					//}
 				}
 			}
 			else

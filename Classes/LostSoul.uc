@@ -1,15 +1,32 @@
 Class LostSoul extends ToxikkMonster_Flying;
 
 var			ParticleSystemComponent				FireComp;
+var			AudioComponent						AmbComp;
 
 simulated function PostBeginPlay()
 {
 	super.PostBeginPlay();
 	
+	// Attach fire
 	if (WorldInfo.NetMode != NM_DedicatedServer)
-	{
 		Mesh.AttachComponentToSocket(FireComp, 'FlameSocket');
+}
+
+simulated function LungeMid(){AmbComp.SoundCue=SoundCue'Doom3Monsters.LostSoul.VP.ls_charge_cue';}
+simulated function LungeEnd(){AmbComp.SoundCue=SoundCue'Doom3Monsters.LostSoul.VP.ls_idle_cue';}
+
+function bool Died(Controller Killer, class<DamageType> damageType, vector HitLocation)
+{
+	if (Super.Died(Killer, DamageType, HitLocation))
+	{
+		AmbComp.SoundCue = None;
+		DetachComponent(AmbComp);
+		FireComp.DeactivateSystem();
+		SetPhysics(PHYS_Falling);
+		return true;
 	}
+	
+	return false;
 }
 
 DefaultProperties
@@ -19,6 +36,15 @@ DefaultProperties
 		CollisionRadius=12.500000
 		bDrawBoundingBox=true
     End Object
+	
+	// Ambient sound
+	Begin Object Class=AudioComponent Name=AmbientComp
+		SoundCue=SoundCue'Doom3Monsters.LostSoul.VP.ls_idle_cue'
+		VolumeMultiplier=0.5
+		bAutoPlay=true
+	End Object
+	AmbComp = AmbientComp
+	Components.Add(AmbientComp)
 	
 	// SKELETAL MESH
     Begin Object Name=MainMesh
@@ -66,6 +92,7 @@ DefaultProperties
 	ChatterSound=SoundCue'Doom3Monsters.LostSoul.VP.ls_chatter_cue'
 	IdleSound=SoundCue'Doom3Monsters.LostSoul.VP.ls_chatter_cue'
 	
+
 	bHasMelee=true
 	bHasRanged=true
 	bHasLunge=true
@@ -77,10 +104,12 @@ DefaultProperties
 	
 	Health=50
 	
-	AttackDistance=500
+	AttackDistance=64
 	RangedAttackDistance=1000
 	
 	RunningAnim=Walk
+	
+	LungeZBoost = 0
 	
 	SightAnims(0)=Sight
 	
@@ -90,6 +119,9 @@ DefaultProperties
 	LungeSpeed=1000.0
 	
 	LungeDamage=30
+	bUseLungeStart = false
+	bUseLungeEnd = false
+	bContinuousLunge = true
 	
 	// 100 percent, always lunge
 	LungeChance=0.0
@@ -97,4 +129,6 @@ DefaultProperties
 	bUseAimOffset=false
 	
 	MonsterName = "Lost Soul"
+	
+	LungeCutoffTime = 3.0
 }

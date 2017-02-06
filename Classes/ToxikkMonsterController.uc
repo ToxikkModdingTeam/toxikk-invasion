@@ -229,6 +229,8 @@ state Lunging
 		SetRotation(DesiredRot);
 	}
 	
+	simulated function ForceLungeStop() {if (ToxikkMonster(Pawn).bIsLunging){ToxikkMonster(Pawn).bIsLunging = false;}}
+	
 	Begin:
 		BeginNotify("Lunging");
 		DesiredRot = Rotation;
@@ -236,25 +238,51 @@ state Lunging
 		// `Log("Preparing to lunge...");
 		
 		// PRE-LUNGE
-		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeStartAnim);
-		Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).LungeStartAnim));
+		if (ToxikkMonster(Pawn).bUseLungeStart)
+		{
+			ToxikkMonster(Pawn).LungeStart();
+			ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeStartAnim);
+			Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).LungeStartAnim));
+		}
 		
 		// MID-LUNGE
+		ToxikkMonster(Pawn).LungeMid();
 		tmp_V = Normal(Target.Location-Pawn.Location) * ToxikkMonster(Pawn).LungeSpeed;
-		tmp_V.Z += 260;
+		tmp_V.Z += ToxikkMonster(Pawn).LungeZBoost;
 		Pawn.Velocity = tmp_V;
-		Pawn.SetPhysics(PHYS_Falling);
+		
+		if (ToxikkMonster_Flying(Pawn) == None)
+			Pawn.SetPhysics(PHYS_Falling);
+			
 		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeMidAnim);
 		ToxikkMonster(Pawn).bIsLunging = true;
+		Pawn.AirSpeed = ToxikkMonster(Pawn).LungeSpeed;
+		
+		if (ToxikkMonster(Pawn).LungeCutoffTime > 0)
+			SetTimer(ToxikkMonster(Pawn).LungeCutoffTime,false,'ForceLungeStop');
 		
 		while (ToxikkMonster(Pawn).bIsLunging)
 		{
+			/*
+			if (ToxikkMonster(Pawn).bContinuousLunge)
+			{
+				tmp_V = Normal(Target.Location-Pawn.Location) * ToxikkMonster(Pawn).LungeSpeed;
+				Pawn.Velocity = tmp_V;
+			}
+			*/
 			Sleep(0.01);
 		}
 		
+		Pawn.AirSpeed = ToxikkMonster(Pawn).default.AirSpeed;
+		
+		ToxikkMonster(Pawn).LungeEnd();
+		
 		// POST-LUNGE
-		ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeEndAnim);
-		Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).LungeEndAnim));
+		if (ToxikkMonster(Pawn).bUseLungeEnd)
+		{
+			ToxikkMonster(Pawn).PlayForcedAnim(ToxikkMonster(Pawn).LungeEndAnim);
+			Sleep(ToxikkMonster(Pawn).Mesh.GetAnimLength(ToxikkMonster(Pawn).LungeEndAnim));
+		}
 		
 		// Don't crawl anymore
 		ToxikkMonster(Pawn).SetCrawling(false);

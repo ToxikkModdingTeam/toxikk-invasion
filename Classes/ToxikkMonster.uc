@@ -20,6 +20,9 @@ var		int								FaceRate;
 
 var		string							MonsterName;
 
+// For flying
+var		float							DistanceOffGroundMin, DistanceOffGroundMax;
+
 //=============================================================================
 //--BOOM HEADSHOT--------------------------------------------------------------
 
@@ -56,10 +59,14 @@ var		float							JumpPadDelay;					// A "cooldown" for using a jump pad
 
 /** Monster can lunge (imp, trite, etc.) */
 var bool bHasLunge;
+// Start / end anims
+var bool bUseLungeStart, bUseLungeEnd;
 /** Monster is currently lunging (mid-air) */
 var bool bIsLunging;
 /** Monster can only lunge while crouched */
 var bool bLungeIfCrouched;
+/** Monster does a continuous lunge until it hits something */
+var bool bContinuousLunge;
 /** Monster is currently crawling */
 var bool bIsCrawling;
 
@@ -77,6 +84,10 @@ var float CrawlChance;
 var float RangedDelay;
 /** How much force is applied when we lunge toward the player */
 var float LungeSpeed;
+/** How much to vertically boost the lunge */
+var float LungeZBoost;
+/** The maximum amount of time that we can lunge for */
+var float LungeCutoffTime;
 
 /** How much damage melee attacks do */
 var int PunchDamage;
@@ -1537,6 +1548,11 @@ static function string GetMonsterName()
 		return default.MonsterName;
 }
 
+// Extra things for lunge, just in case
+simulated function LungeStart();
+simulated function LungeMid();
+simulated function LungeEnd();
+
 //--==--==--==--==--==--==--==--==--==--==--==
 // HEADSHOT FUNCTIONALITY - OOH, JUICY
 //--==--==--==--==--==--==--==--==--==--==--==
@@ -1813,4 +1829,13 @@ DefaultProperties
 	BleedOutRate = 1.0
 	
 	// FX.hsgib_1 , FX.hsgib_2, GibColor
+	
+	DistanceOffGroundMin = 64.0
+	DistanceOffGroundMax = 1024.0
+	
+	bUseLungeStart = true
+	bUseLungeEnd = true
+	LungeZBoost = 260
+	LungeCutoffTime = -1
+	bContinuousLunge = false
 }
